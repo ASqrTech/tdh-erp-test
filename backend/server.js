@@ -57,6 +57,145 @@ db.serialize(() => {
         FOREIGN KEY (user_id) REFERENCES users(id)
     )`);
 
+    // Gate Entries Table
+    db.run(`CREATE TABLE IF NOT EXISTS gate_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        gate_mode TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        serial_number TEXT UNIQUE,
+        vehicle_number TEXT,
+        driver_name TEXT,
+        phone_number TEXT,
+        note TEXT,
+        from_broker TEXT,
+        to_location TEXT,
+        quantity REAL,
+        from_location TEXT,
+        broker_name TEXT,
+        broker_phone TEXT,
+        user_id INTEGER,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )`);
+
+    // Weighing Records Table
+    db.run(`CREATE TABLE IF NOT EXISTS weighing_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_number TEXT NOT NULL,
+        ticket_number TEXT UNIQUE,
+        note TEXT,
+        in_weight REAL,
+        out_weight REAL,
+        net_weight REAL,
+        sample_collector TEXT,
+        user_id INTEGER,
+        gate_entry_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (gate_entry_id) REFERENCES gate_entries(id)
+    )`);
+
+    // Quality Checks Table
+    db.run(`CREATE TABLE IF NOT EXISTS quality_checks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_number TEXT,
+        transaction_id TEXT UNIQUE,
+        note TEXT,
+        size_analysis_7 REAL,
+        size_analysis_5 REAL,
+        size_analysis_4 REAL,
+        small_mud_percent REAL,
+        big_mud_stones_percent REAL,
+        damage_1 REAL,
+        physical_damage_2 REAL,
+        moisture_content_percent REAL,
+        report_url TEXT,
+        check_type TEXT CHECK(check_type IN ('initial', 'final')),
+        user_id INTEGER,
+        weighing_record_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (weighing_record_id) REFERENCES weighing_records(id)
+    )`);
+
+    // Bin Operations Table
+    db.run(`CREATE TABLE IF NOT EXISTS bin_operations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_number TEXT,
+        bin_status TEXT,
+        rm1 TEXT,
+        rm2 TEXT,
+        rm3 TEXT,
+        ob_quantity REAL,
+        cb_quantity REAL,
+        wb_quantity REAL,
+        pb_quantity REAL,
+        sr_in_quantity REAL,
+        hub_quantity REAL,
+        user_id INTEGER,
+        quality_check_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (quality_check_id) REFERENCES quality_checks(id)
+    )`);
+
+    // Storage Records Table
+    db.run(`CREATE TABLE IF NOT EXISTS storage_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entered_vehicle TEXT,
+        quantity REAL,
+        material_content TEXT,
+        jute_bags_quantity INTEGER,
+        plastic_bags_quantity INTEGER,
+        location_main TEXT,
+        location_sub TEXT,
+        user_id INTEGER,
+        bin_operation_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (bin_operation_id) REFERENCES bin_operations(id)
+    )`);
+
+    // Processing Records Table
+    db.run(`CREATE TABLE IF NOT EXISTS processing_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        process_id TEXT UNIQUE,
+        machine_id TEXT,
+        parameters TEXT,
+        user_id INTEGER,
+        storage_record_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (storage_record_id) REFERENCES storage_records(id)
+    )`);
+
+    // Packing Records Table
+    db.run(`CREATE TABLE IF NOT EXISTS packing_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        packing_id TEXT UNIQUE,
+        bag_size_kg INTEGER,
+        no_of_bags INTEGER,
+        user_id INTEGER,
+        processing_record_id INTEGER,
+        final_quality_check_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (processing_record_id) REFERENCES processing_records(id),
+        FOREIGN KEY (final_quality_check_id) REFERENCES quality_checks(id)
+    )`);
+
+    // Dispatch Records Table
+    db.run(`CREATE TABLE IF NOT EXISTS dispatch_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        dispatch_id TEXT UNIQUE,
+        destination TEXT,
+        truck_no TEXT,
+        user_id INTEGER,
+        packing_record_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (packing_record_id) REFERENCES packing_records(id)
+    )`);
+
     // Seed the database with initial users if the table is empty
     db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
         if (err) {
