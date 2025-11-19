@@ -21,7 +21,7 @@ const db = new sqlite3.Database('./database.db', (err) => {
 db.serialize(() => {
     // Users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('ADMIN', 'MANAGER', 'ASSISTANT_MANAGER', 'GATE_ENTRY_OPERATOR', 'OPERATOR', 'QUALITY_SUPERVISOR', 'BIN_OPERATOR', 'STORE_MANAGER', 'PLANT_OPERATOR', 'PACKAGING_SUPERVISOR', 'LOGISTICS_OFFICER')),
         password TEXT NOT NULL,
@@ -204,24 +204,23 @@ db.serialize(() => {
         }
 
         if (row.count === 0) {
-            const users = [
-                { name: 'Admin User', role: 'ADMIN', email: 'admin@example.com' },
-                { name: 'Manager User', role: 'MANAGER', email: 'manager@example.com' },
-                { name: 'Assistant Manager', role: 'ASSISTANT_MANAGER', email: 'asst.manager@example.com' },
-                { name: 'Gate Entry Operator', role: 'GATE_ENTRY_OPERATOR', email: 'gate@example.com' },
-                { name: 'Operator', role: 'OPERATOR', email: 'operator@example.com' },
-                { name: 'Quality Supervisor', role: 'QUALITY_SUPERVISOR', email: 'quality@example.com' },
-                { name: 'Bin Operator', role: 'BIN_OPERATOR', email: 'bin@example.com' },
-                { name: 'Store Manager', role: 'STORE_MANAGER', email: 'store@example.com' },
-                { name: 'Plant Operator', role: 'PLANT_OPERATOR', email: 'plant@example.com' },
-                { name: 'Packaging Supervisor', role: 'PACKAGING_SUPERVISOR', email: 'packaging@example.com' },
-                { name: 'Logistics Officer', role: 'LOGISTICS_OFFICER', email: 'logistics@example.com' },
+            const initialUsers = [
+                { id: 'admin', name: 'Admin User', role: 'ADMIN', pin: '0000', password: 'password', email: 'admin@asquare.com' },
+                { id: 'manager', name: 'Manager User', role: 'MANAGER', pin: '1234', password: 'password', email: 'manager@asquare.com' },
+                { id: 'asstmanager', name: 'Assistant Manager', role: 'ASSISTANT_MANAGER', pin: '4321', password: 'password', email: 'asst@asquare.com' },
+                { id: 'gate1', name: 'Gate Operator', role: 'GATE_ENTRY_OPERATOR', pin: '5555', password: 'password', email: 'gate1@asquare.com' },
+                { id: 'operator1', name: 'Weighing Operator', role: 'OPERATOR', pin: '1111', password: 'password', email: 'op1@asquare.com' },
+                { id: 'quality1', name: 'Quality Supervisor', role: 'QUALITY_SUPERVISOR', pin: '2222', password: 'password', email: 'qa1@asquare.com' },
+                { id: 'binop1', name: 'Bin Operator', role: 'BIN_OPERATOR', pin: '9999', password: 'password', email: 'binop1@asquare.com' },
+                { id: 'store1', name: 'Store Manager', role: 'STORE_MANAGER', pin: '6666', password: 'password', email: 'store1@asquare.com' },
+                { id: 'plant1', name: 'Plant Operator', role: 'PLANT_OPERATOR', pin: '7777', password: 'password', email: 'plant1@asquare.com' },
+                { id: 'pack1', name: 'Packaging Supervisor', role: 'PACKAGING_SUPERVISOR', pin: '8888', password: 'password', email: 'pack1@asquare.com' },
+                { id: 'logistics1', name: 'Logistics Officer', role: 'LOGISTICS_OFFICER', pin: '3333', password: 'password', email: 'log1@asquare.com' },
             ];
 
-            const stmt = db.prepare("INSERT INTO users (name, role, email, password, pin) VALUES (?, ?, ?, ?, ?)");
-            users.forEach(user => {
-                // In a real app, passwords and PINs should be securely hashed.
-                stmt.run(user.name, user.role, user.email, 'password123', '1234');
+            const stmt = db.prepare("INSERT INTO users (id, name, role, email, password, pin) VALUES (?, ?, ?, ?, ?, ?)");
+            initialUsers.forEach(user => {
+                stmt.run(user.id, user.name, user.role, user.email, user.password, user.pin);
             });
             stmt.finalize();
             console.log('Initial users have been added to the database.');
@@ -245,7 +244,82 @@ app.get('/api/users', (req, res) => {
     });
 });
 
-// ... (rest of the endpoints)
+// Get all gate entries
+app.get('/api/gate-entries', (req, res) => {
+    db.all("SELECT * FROM gate_entries", [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ "error": err.message });
+            return;
+        }
+        res.json({
+            "message": "success",
+            "data": rows
+        });
+    });
+});
+
+// Add a new gate entry
+app.post('/api/gate-entries', (req, res) => {
+    const {
+        gate_mode,
+        serial_number,
+        vehicle_number,
+        driver_name,
+        phone_number,
+        note,
+        from_broker,
+        to_location,
+        quantity,
+        from_location,
+        broker_name,
+        broker_phone,
+        user_id
+    } = req.body;
+
+    const sql = `INSERT INTO gate_entries (
+        gate_mode,
+        serial_number,
+        vehicle_number,
+        driver_name,
+        phone_number,
+        note,
+        from_broker,
+        to_location,
+        quantity,
+        from_location,
+        broker_name,
+        broker_phone,
+        user_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const params = [
+        gate_mode,
+        serial_number,
+        vehicle_number,
+        driver_name,
+        phone_number,
+        note,
+        from_broker,
+        to_location,
+        quantity,
+        from_location,
+        broker_name,
+        broker_phone,
+        user_id
+    ];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            res.status(400).json({ "error": err.message });
+            return;
+        }
+        res.json({
+            "message": "success",
+            "data": { id: this.lastID, ...req.body }
+        });
+    });
+});
+
 
 app.listen(port, () => {
     console.log(`Backend server is running on http://localhost:${port}`);
