@@ -1,0 +1,5 @@
+{
+  "name": "Dal Production ERP Dashboard",
+  "description": "A web application to visualize and simulate the Raw Dal Production & ERP Process, outlining stages, roles, and data flow from arrival to dispatch.",
+  "requestFramePermissions": []
+}
