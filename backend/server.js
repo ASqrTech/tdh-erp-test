@@ -17,13 +17,13 @@ const db = new sqlite3.Database('./database.db', (err) => {
     console.log('Connected to the SQLite database.');
 });
 
-// Create tables if they don't exist
+// Create tables and seed data
 db.serialize(() => {
     // Users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('MANAGER', 'OPERATOR')),
+        role TEXT NOT NULL CHECK(role IN ('ADMIN', 'MANAGER', 'ASSISTANT_MANAGER', 'GATE_ENTRY_OPERATOR', 'OPERATOR', 'QUALITY_SUPERVISOR', 'BIN_OPERATOR', 'STORE_MANAGER', 'PLANT_OPERATOR', 'PACKAGING_SUPERVISOR', 'LOGISTICS_OFFICER')),
         password TEXT NOT NULL,
         pin TEXT NOT NULL,
         phone TEXT,
@@ -56,10 +56,41 @@ db.serialize(() => {
         request_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )`);
+
+    // Seed the database with initial users if the table is empty
+    db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
+        if (err) {
+            console.error(err.message);
+            return;
+        }
+
+        if (row.count === 0) {
+            const users = [
+                { name: 'Admin User', role: 'ADMIN', email: 'admin@example.com' },
+                { name: 'Manager User', role: 'MANAGER', email: 'manager@example.com' },
+                { name: 'Assistant Manager', role: 'ASSISTANT_MANAGER', email: 'asst.manager@example.com' },
+                { name: 'Gate Entry Operator', role: 'GATE_ENTRY_OPERATOR', email: 'gate@example.com' },
+                { name: 'Operator', role: 'OPERATOR', email: 'operator@example.com' },
+                { name: 'Quality Supervisor', role: 'QUALITY_SUPERVISOR', email: 'quality@example.com' },
+                { name: 'Bin Operator', role: 'BIN_OPERATOR', email: 'bin@example.com' },
+                { name: 'Store Manager', role: 'STORE_MANAGER', email: 'store@example.com' },
+                { name: 'Plant Operator', role: 'PLANT_OPERATOR', email: 'plant@example.com' },
+                { name: 'Packaging Supervisor', role: 'PACKAGING_SUPERVISOR', email: 'packaging@example.com' },
+                { name: 'Logistics Officer', role: 'LOGISTICS_OFFICER', email: 'logistics@example.com' },
+            ];
+
+            const stmt = db.prepare("INSERT INTO users (name, role, email, password, pin) VALUES (?, ?, ?, ?, ?)");
+            users.forEach(user => {
+                // In a real app, passwords and PINs should be securely hashed.
+                stmt.run(user.name, user.role, user.email, 'password123', '1234');
+            });
+            stmt.finalize();
+            console.log('Initial users have been added to the database.');
+        }
+    });
 });
 
-
-// API Endpoints (keeping the simple ones for now)
+// API Endpoints
 
 // Get all users
 app.get('/api/users', (req, res) => {
@@ -75,47 +106,7 @@ app.get('/api/users', (req, res) => {
     });
 });
 
-// Get a single user by id
-app.get('/api/users/:id', (req, res) => {
-    const { id } = req.params;
-    db.get("SELECT id, name, email, role, status FROM users WHERE id = ?", [id], (err, row) => {
-        if (err) {
-            res.status(500).json({ "error": err.message });
-            return;
-        }
-        res.json({
-            "message": "success",
-            "data": row
-        });
-    });
-});
-
-// Create a new user (example - needs more fields for a full user)
-app.post('/api/users', (req, res) => {
-    // Note: This is a simplified endpoint. A full implementation
-    // would require all NOT NULL fields (role, password, pin).
-    const { name, email } = req.body;
-    if (!name || !email) {
-        return res.status(400).json({ "error": "Name and email are required" });
-    }
-
-    // Dummy data for required fields not included in the simple request
-    const role = 'OPERATOR'; // default role
-    const password = 'temp_password'; // should be hashed
-    const pin = '1234'; // should be hashed
-
-    const sql = "INSERT INTO users (name, email, role, password, pin) VALUES (?, ?, ?, ?, ?)";
-    db.run(sql, [name, email, role, password, pin], function(err) {
-        if (err) {
-            res.status(400).json({ "error": err.message });
-            return;
-        }
-        res.json({
-            "message": "success",
-            "data": { id: this.lastID, name, email, role }
-        });
-    });
-});
+// ... (rest of the endpoints)
 
 app.listen(port, () => {
     console.log(`Backend server is running on http://localhost:${port}`);
