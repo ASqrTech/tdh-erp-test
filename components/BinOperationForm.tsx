@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo } from 'react';
 import { PROCESS_STAGES } from '../constants';
 import { useAuth } from '../hooks/useAuth';
@@ -17,14 +18,14 @@ export const BinOperationForm: React.FC = () => {
     const vehiclesPendingBinning = useMemo(() => {
         const qualityCheckedVehicles = new Set(
             logs
-                .filter(log => (log.details as any)?.stageId === 'quality_check_1')
-                .map(log => (log.details as any).submittedData.vehicle_number)
+                .filter(log => (log.stageId) === 'quality_check_1')
+                .map(log => (log.submittedData as any).vehicle_number)
         );
 
         const binnedVehicles = new Set(
             logs
-                .filter(log => (log.details as any)?.stageId === 'bin_operation')
-                .map(log => (log.details as any).submittedData.vehicle_number)
+                .filter(log => (log.stageId) === 'bin_operation')
+                .map(log => (log.submittedData as any).vehicle_number)
         );
 
         qualityCheckedVehicles.forEach(vehicle => {
@@ -52,14 +53,20 @@ export const BinOperationForm: React.FC = () => {
         setIsPinModalOpen(true);
     };
 
-    const handlePinConfirm = () => {
-        if (!currentUser || !submittedData) return;
+    const handlePinConfirm = async () => {
+        if (!currentUser || !submittedData || !binStage) return;
         
         if (verifyPin(pin)) {
-            submitStageData(binStage, submittedData);
-            handleCloseModal();
-            setSubmittedData(null);
-            formRef.current?.reset();
+            try {
+                await submitStageData(binStage, submittedData);
+                alert('Bin operation submitted successfully!');
+                handleCloseModal();
+                setSubmittedData(null);
+                formRef.current?.reset();
+            } catch (error) {
+                console.error("Error submitting bin operation: ", error);
+                alert('Failed to submit bin operation.');
+            }
         } else {
             setPinError('Incorrect PIN. Please try again.');
             setPin('');

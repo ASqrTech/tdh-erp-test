@@ -29,7 +29,6 @@ const outFields: FormField[] = [
     { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
 ];
 
-
 export const GateEntryForm: React.FC = () => {
     const { currentUser, verifyPin, submitStageData } = useAuth();
     const formRef = useRef<HTMLFormElement>(null);
@@ -74,14 +73,20 @@ export const GateEntryForm: React.FC = () => {
         setIsPinModalOpen(true);
     };
 
-    const handlePinConfirm = () => {
-        if (!currentUser || !submittedData) return;
+    const handlePinConfirm = async () => {
+        if (!currentUser || !submittedData || !arrivalStage) return;
         
         if (verifyPin(pin)) {
-            submitStageData(arrivalStage!, submittedData);
-            handleCloseModal();
-            setSubmittedData(null);
-            formRef.current?.reset();
+            try {
+                await submitStageData(arrivalStage, submittedData);
+                alert('Gate entry submitted successfully!');
+                handleCloseModal();
+                setSubmittedData(null);
+                formRef.current?.reset();
+            } catch (error) {
+                console.error("Error submitting gate entry: ", error);
+                alert('Failed to submit gate entry.');
+            }
         } else {
             setPinError('Incorrect PIN. Please try again.');
             setPin('');

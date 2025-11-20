@@ -1,20 +1,23 @@
+
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db } from '../firebase/firebase';
 import type { User, LogEntry, ProcessStage } from '../types';
 
 interface AuthContextType {
     currentUser: User | null;
     users: User[];
-    passwordRequests: string[];
     logs: LogEntry[];
-    login: (userId: string, pin: string, pass: string) => void;
+    loading: boolean;
+    login: (email: string, pass: string, pin: string) => Promise<void>;
     logout: () => void;
-    addUser: (details: Omit<User, 'id' | 'pin' | 'password' | 'status'>) => { pin: string; password: string };
-    requestPasswordReset: (userId: string) => void;
-    approvePasswordReset: (userId: string) => void;
-    updateUserProfile: (updatedUser: User) => void;
-    updateUserDetails: (updatedUser: User) => void;
-    deactivateUser: (userId: string) => void;
-    submitStageData: (stage: ProcessStage, data: Record<string, any>) => void;
+    addUser: (details: Omit<User, 'id' | 'pin' | 'password' | 'status'>) => Promise<{ pin: string; password: string }>;
+    requestPasswordReset: (email: string) => Promise<void>;
+    updateUserProfile: (updatedUser: User) => Promise<void>;
+    updateUserDetails: (updatedUser: User) => Promise<void>;
+    deactivateUser: (userId: string) => Promise<void>;
+    submitStageData: (stage: ProcessStage, data: Record<string, any>) => Promise<void>;
     verifyPin: (pin: string) => boolean;
 }
 
@@ -27,193 +30,133 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [users, setUsers] = useState<User[]>([]);
-    const [passwordRequests, setPasswordRequests] = useState<string[]>([]);
     const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const response = await fetch('http://localhost:3001/api/users');
-                const data = await response.json();
-                setUsers(data.data);
-            } catch (error) {
-                console.error('Failed to fetch users:', error);
-            }
-        };
+        let unsubscribeUserSnapshot: (() => void) | undefined;
 
-        const fetchLogs = async () => {
-            try {
-                const response = await fetch('http://localhost:3001/api/gate-entries');
-                const data = await response.json();
-                const formattedLogs = data.data.map((entry: any) => ({
-                    id: `log-arrival-${entry.id}`,
-                    timestamp: entry.timestamp,
-                    userId: entry.user_id,
-                    userName: 'Gate Operator', // This should be fetched from the users table
-                    action: 'SUBMIT_STAGE_DATA',
-                    details: {
-                        stageId: 'arrival',
-                        stageName: 'Raw Dal Arrival',
-                        submittedData: entry,
+        const unsubscribeAuth = onAuthStateChanged(auth, user => {
+            if (unsubscribeUserSnapshot) {
+                unsubscribeUserSnapshot();
+            }
+
+            if (user) {
+                const userRef = doc(db, "users", user.uid);
+                unsubscribeUserSnapshot = onSnapshot(userRef, 
+                    (doc) => {
+                        if (doc.exists()) {
+                            setCurrentUser({ id: doc.id, ...doc.data() } as User);
+                        } else {
+                            // This can happen on new user creation; the user doc hasn't been created yet.
+                            // We won't set currentUser to null, as the doc should appear shortly.
+                        }
+                        setLoading(false);
                     },
-                }));
-                setLogs(formattedLogs);
-            } catch (error) {
-                console.error('Failed to fetch gate entries:', error);
+                    (error) => {
+                        console.error("Error fetching user document:", error);
+                        setCurrentUser(null);
+                        setLoading(false);
+                    }
+                );
+            } else {
+                setCurrentUser(null);
+                setLoading(false);
+            }
+        });
+
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeUserSnapshot) {
+                unsubscribeUserSnapshot();
             }
         };
-
-        fetchUsers();
-        fetchLogs();
     }, []);
 
-    const addLog = (user: User, action: string, details: Record<string, any> | string) => {
-        if (user.role === 'ADMIN') {
-            return;
-        }
-    
-        const newLog: LogEntry = {
-            id: `${Date.now()}-${Math.random()}`,
-            timestamp: new Date().toISOString(),
-            userId: user.id,
-            userName: user.name,
-            action,
-            details,
-        };
-        setLogs(prev => [...prev, newLog]);
-    };
+    useEffect(() => {
+        const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+            const usersData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as User[];
+            setUsers(usersData);
+        });
+        return () => unsubscribe();
+    }, []);
 
-    const logCurrentUserAction = (action: string, details: Record<string, any> | string) => {
-        if (currentUser) {
-            addLog(currentUser, action, details);
-        }
-    }
+    useEffect(() => {
+        const unsubscribe = onSnapshot(collection(db, "logs"), (snapshot) => {
+            const logsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LogEntry[];
+            setLogs(logsData);
+        });
+        return () => unsubscribe();
+    }, []);
 
-    const login = (userId: string, pin: string, pass: string) => {
-        const user = users.find(u => u.email.toLowerCase() === userId.toLowerCase() && u.pin === pin && u.password === pass);
-        if (user) {
-            if (user.status === 'INACTIVE') {
-                 throw new Error('This account has been deactivated. Please contact your manager.');
-            }
-            setCurrentUser(user);
-            addLog(user, 'LOGIN', 'User signed in successfully.');
-        } else {
-            throw new Error('Invalid credentials. Please try again.');
+    const login = async (email: string, pass: string, pin: string) => {
+        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+        const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+        if (!userDoc.exists() || userDoc.data().pin !== pin) {
+            await signOut(auth);
+            throw new Error("Invalid PIN or user data not found.");
         }
     };
 
-    const logout = () => {
-        logCurrentUserAction('LOGOUT', 'User signed out.');
-        setCurrentUser(null);
+    const logout = async () => {
+        await signOut(auth);
     };
 
-    const addUser = (details: Omit<User, 'id' | 'pin' | 'password' | 'status'>) => {
-        const newId = details.name.toLowerCase().replace(/\s/g, '') + (Math.floor(Math.random() * 90) + 10);
+    const addUser = async (details: Omit<User, 'id' | 'pin' | 'password' | 'status'>) => {
         const newPin = Math.floor(1000 + Math.random() * 9000).toString();
         const newPassword = 'password'; // Default password
-        const newUser: User = { 
+        
+        const userCredential = await createUserWithEmailAndPassword(auth, details.email, newPassword);
+        const newUser: Omit<User, 'id'> = { 
             ...details,
-            id: newId, 
             pin: newPin, 
-            password: newPassword,
+            password: newPassword, // Note: You should not store plaintext passwords
             status: 'ACTIVE',
         };
-        setUsers(prev => [...prev, newUser]);
-        logCurrentUserAction('ADD_USER', `Created new user: ${newUser.name} (ID: ${newUser.id}, Role: ${newUser.role}).`);
+        
+        await setDoc(doc(db, "users", userCredential.user.uid), newUser);
         return { pin: newPin, password: newPassword };
     };
     
-    const requestPasswordReset = (userId: string) => {
-        const userExists = users.some(u => u.id === userId);
-        if (userExists && !passwordRequests.includes(userId)) {
-            setPasswordRequests(prev => [...prev, userId]);
-        }
-    }
-    
-    const approvePasswordReset = (userId: string) => {
-        const targetUser = users.find(u => u.id === userId);
-        if (!targetUser) return;
-
-        setUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, password: 'password' } : u));
-        setPasswordRequests(prev => prev.filter(id => id !== userId));
-        logCurrentUserAction('APPROVE_PASSWORD_RESET', `Approved password reset for user: ${targetUser.name} (ID: ${userId}).`);
-        alert(`Password for user ${userId} has been reset to 'password'.`);
-    }
-
-    const updateUserProfile = (updatedUser: User) => {
-        setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
-        if (currentUser?.id === updatedUser.id) {
-            setCurrentUser(updatedUser);
-        }
-        logCurrentUserAction('UPDATE_OWN_PROFILE', `Updated own profile details.`);
+    const requestPasswordReset = async (email: string) => {
+        await sendPasswordResetEmail(auth, email);
     };
 
-    const updateUserDetails = (updatedUser: User) => {
-        setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
-        logCurrentUserAction('UPDATE_USER_DETAILS', `Updated details for user: ${updatedUser.name} (ID: ${updatedUser.id}).`);
+    const updateUserProfile = async (updatedUser: User) => {
+        const userRef = doc(db, "users", updatedUser.id);
+        await updateDoc(userRef, updatedUser as any);
     };
 
-    const deactivateUser = (userId: string) => {
-        const targetUser = users.find(u => u.id === userId);
-        setUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, status: 'INACTIVE' } : u));
-        if (targetUser) {
-             logCurrentUserAction('DEACTIVATE_USER', `Deactivated user: ${targetUser.name} (ID: ${userId}).`);
-        }
+    const updateUserDetails = async (updatedUser: User) => {
+        const userRef = doc(db, "users", updatedUser.id);
+        await updateDoc(userRef, updatedUser as any);
+    };
+
+    const deactivateUser = async (userId: string) => {
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, { status: 'INACTIVE' });
     };
     
     const submitStageData = async (stage: ProcessStage, data: Record<string, any>) => {
         const logDetails = {
             stageName: stage.name,
             stageId: stage.id,
-            submittedData: data
+            submittedData: data,
+            timestamp: new Date().toISOString(),
+            userId: currentUser?.id,
+            userName: currentUser?.name,
+            action: 'SUBMIT_STAGE_DATA',
         };
 
-        if (stage.id === 'arrival') {
-            try {
-                const response = await fetch('http://localhost:3001/api/gate-entries', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ ...data, user_id: currentUser?.id }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to submit gate entry');
-                }
-
-                const newEntry = await response.json();
-                const newLog: LogEntry = {
-                    id: `log-arrival-${newEntry.data.id}`,
-                    timestamp: newEntry.data.timestamp,
-                    userId: newEntry.data.user_id,
-                    userName: currentUser?.name ?? 'Unknown User',
-                    action: 'SUBMIT_STAGE_DATA',
-                    details: {
-                        stageId: 'arrival',
-                        stageName: 'Raw Dal Arrival',
-                        submittedData: newEntry.data,
-                    },
-                };
-                setLogs(prev => [...prev, newLog]);
-
-                alert(`Data for ${stage.name} submitted successfully and logged!`);
-            } catch (error) {
-                console.error(error);
-                alert(`Failed to submit data for ${stage.name}.`);
-            }
-        } else {
-            logCurrentUserAction('SUBMIT_STAGE_DATA', logDetails);
-            alert(`Data for ${stage.name} submitted successfully and logged!`);
-        }
+        await addDoc(collection(db, "logs"), logDetails);
     };
-
+    
     const verifyPin = (pin: string) => {
         if (!currentUser) return false;
         return currentUser.pin === pin;
     };
 
-    const value = { currentUser, users, passwordRequests, logs, login, logout, addUser, requestPasswordReset, approvePasswordReset, updateUserProfile, updateUserDetails, deactivateUser, submitStageData, verifyPin };
+    const value = { currentUser, users, logs, loading, login, logout, addUser, requestPasswordReset, updateUserProfile, updateUserDetails, deactivateUser, submitStageData, verifyPin };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

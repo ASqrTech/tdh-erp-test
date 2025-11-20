@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { PROCESS_STAGES } from '../constants';
 import { useAuth } from '../hooks/useAuth';
@@ -44,15 +45,21 @@ export const StorageForm: React.FC = () => {
         setIsPinModalOpen(true);
     };
 
-    const handlePinConfirm = () => {
-        if (!currentUser || !submittedData) return;
+    const handlePinConfirm = async () => {
+        if (!currentUser || !submittedData || !storageStage) return;
         
         if (verifyPin(pin)) {
-            submitStageData(storageStage, submittedData);
-            handleCloseModal();
-            setSubmittedData(null);
-            formRef.current?.reset();
-            setSelectedLocationArea('');
+            try {
+                await submitStageData(storageStage, submittedData);
+                alert('Storage record submitted successfully!');
+                handleCloseModal();
+                setSubmittedData(null);
+                formRef.current?.reset();
+                setSelectedLocationArea('');
+            } catch (error) {
+                console.error("Error submitting storage record: ", error);
+                alert('Failed to submit storage record.');
+            }
         } else {
             setPinError('Incorrect PIN. Please try again.');
             setPin('');

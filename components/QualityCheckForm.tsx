@@ -53,14 +53,20 @@ export const QualityCheckForm: React.FC = () => {
         setIsPinModalOpen(true);
     };
 
-    const handlePinConfirm = () => {
+    const handlePinConfirm = async () => {
         if (!currentUser || !submittedData) return;
         
         if (verifyPin(pin)) {
-            submitStageData(qualityStage, submittedData);
-            handleCloseModal();
-            setSubmittedData(null);
-            formRef.current?.reset();
+            try {
+                await submitStageData(qualityStage, submittedData);
+                alert('Quality check report submitted successfully!');
+                handleCloseModal();
+                setSubmittedData(null);
+                formRef.current?.reset();
+            } catch (error) {
+                console.error("Error submitting quality check: ", error);
+                alert('Failed to submit quality check report.');
+            }
         } else {
             setPinError('Incorrect PIN. Please try again.');
             setPin('');

@@ -28,14 +28,20 @@ export const WeighingForm: React.FC = () => {
         setIsPinModalOpen(true);
     };
 
-    const handlePinConfirm = () => {
+    const handlePinConfirm = async () => {
         if (!currentUser || !submittedData) return;
         
         if (verifyPin(pin)) {
-            submitStageData(weighingStage, submittedData);
-            handleCloseModal();
-            setSubmittedData(null);
-            formRef.current?.reset();
+            try {
+                await submitStageData(weighingStage, submittedData);
+                alert('Weighing record submitted successfully!');
+                handleCloseModal();
+                setSubmittedData(null);
+                formRef.current?.reset();
+            } catch (error) {
+                console.error("Error submitting weighing record: ", error);
+                alert('Failed to submit weighing record.');
+            }
         } else {
             setPinError('Incorrect PIN. Please try again.');
             setPin('');
