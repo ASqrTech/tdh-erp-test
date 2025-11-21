@@ -1,5 +1,5 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { Header } from './components/Header';
 import { ProcessFlowDiagram } from './components/ProcessFlowDiagram';
 import { StageDetailsModal } from './components/StageDetailsModal';
@@ -15,35 +15,28 @@ import { BinOperationForm } from './components/BinOperationForm';
 import { StorageForm } from './components/StorageForm';
 import { ManagerProcessView } from './components/ManagerProcessView';
 import { AnalyticsModal } from './components/AnalyticsModal';
-import { UserManagement } from './components/UserManagement';
 import type { ProcessStage, Role, User } from './types';
-import { PROCESS_STAGES, ROLE_PERMISSIONS } from './constants';
-import { useAuth } from './hooks/useAuth';
+import { PROCESS_STAGES, ROLE_PERMISSIONS } from './constants.tsx';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 type View = 'process' | 'manage' | 'dashboard';
 const managerRoles: User['role'][] = ['ADMIN', 'MANAGER', 'ASSISTANT_MANAGER'];
 
-const App: React.FC = () => {
-    const { currentUser, logout, loading } = useAuth();
+const AppContent: React.FC = () => {
+    const { currentUser, logout } = useAuth();
     const [selectedStage, setSelectedStage] = useState<ProcessStage | null>(null);
-
-    const getInitialView = useCallback((user: User | null): View => {
-        if (!user) return 'dashboard';
-        const isManager = managerRoles.includes(user.role);
-        const isDataEntry = ['GATE_ENTRY_OPERATOR', 'OPERATOR', 'QUALITY_SUPERVISOR', 'BIN_OPERATOR', 'STORE_MANAGER'].includes(user.role);
-        return isManager || isDataEntry ? 'process' : 'dashboard';
-    }, []);
-
-    const [view, setView] = useState<View>('dashboard');
+    const isManagerOnLoad = currentUser ? managerRoles.includes(currentUser.role) : false;
+    const [view, setView] = useState<View>(isManagerOnLoad ? 'process' : 'dashboard');
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const prevUserRef = useRef(currentUser);
 
     useEffect(() => {
         if (!prevUserRef.current && currentUser) {
-            setView(getInitialView(currentUser));
+            const isManager = managerRoles.includes(currentUser.role);
+            setView(isManager ? 'process' : 'dashboard');
         }
         prevUserRef.current = currentUser;
-    }, [currentUser, getInitialView]);
+    }, [currentUser]);
 
     const handleStageClick = useCallback((stage: ProcessStage) => {
         setSelectedStage(stage);
@@ -62,10 +55,6 @@ const App: React.FC = () => {
         return PROCESS_STAGES.filter(stage => allowedStageIds.includes(stage.id));
     };
 
-    if (loading) {
-        return <div className="min-h-screen flex items-center justify-center"><div>Loading...</div></div>; // Or a spinner component
-    }
-
     if (!currentUser) {
         return <LoginScreen />;
     }
@@ -78,7 +67,7 @@ const App: React.FC = () => {
             case 'dashboard':
                 return isManager ? <DashboardView /> : <UserDashboardView currentUser={currentUser} onStageClick={handleStageClick} />;
             case 'manage':
-                return isManager ? <UserManagement /> : null;
+                return isManager ? <ManagerView /> : null;
             case 'process':
                 if (isManager) {
                     return <ManagerProcessView stages={visibleStages} onStageClick={handleStageClick} />;
@@ -143,7 +132,7 @@ const App: React.FC = () => {
                     />
                 ) : (
                     <StageDetailsModal
-                        stage={selectedStage}
+                        stage={selected-stage}
                         onClose={handleCloseModal}
                     />
                 )
@@ -158,5 +147,15 @@ const App: React.FC = () => {
         </div>
     );
 };
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
+  );
+}
 
 export default App;

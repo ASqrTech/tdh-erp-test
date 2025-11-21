@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { LogEntry, ProcessStage } from '../types';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
+import { Modal } from './Modal';
 
 // --- START: Chart Components ---
 interface BarChartProps {
@@ -254,12 +255,6 @@ const KpiCard: React.FC<{ title: string; value: string | number; }> = ({ title, 
 
 export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ stage, onClose }) => {
     const { logs } = useAuth();
-    
-    useEffect(() => {
-        const handleEsc = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', handleEsc);
-        return () => window.removeEventListener('keydown', handleEsc);
-    }, [onClose]);
 
     const stageLogs = useMemo(() => logs
         .filter(log =>
@@ -456,33 +451,31 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ stage, onClose }
     }, [stageLogs, stage.id]);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-slate-100 rounded-2xl shadow-2xl w-full max-w-7xl animate-fade-in max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-                <div className="p-6 border-b bg-white rounded-t-2xl flex justify-between items-start">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-800">{stage.name} - Analytics</h2>
-                        <p className="text-sm text-slate-500">{stage.description}</p>
-                    </div>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full p-2 transition">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
+        <Modal isOpen={true} onClose={onClose} containerClassName="max-w-7xl" bgClassName="bg-slate-100">
+            <div className="p-6 border-b bg-white rounded-t-2xl flex justify-between items-start">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">{stage.name} - Analytics</h2>
+                    <p className="text-sm text-slate-500">{stage.description}</p>
                 </div>
-
-                <div className="p-6 overflow-y-auto">
-                    {/* KPIs */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {analyticsContent.kpis.map(kpi => <KpiCard key={kpi.title} {...kpi} />)}
-                    </div>
-
-                    {/* Charts */}
-                    <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[250px]">
-                        {analyticsContent.charts}
-                    </div>
-                    
-                    {/* Full Activity Table */}
-                    <ActivityLogTable logs={stageLogs} stageId={stage.id} />
-                </div>
+                <button onClick={onClose} className="text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full p-2 transition">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
             </div>
-        </div>
+
+            <div className="p-6 overflow-y-auto">
+                {/* KPIs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {analyticsContent.kpis.map(kpi => <KpiCard key={kpi.title} {...kpi} />)}
+                </div>
+
+                {/* Charts */}
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[250px]">
+                    {analyticsContent.charts}
+                </div>
+                
+                {/* Full Activity Table */}
+                <ActivityLogTable logs={stageLogs} stageId={stage.id} />
+            </div>
+        </Modal>
     );
 };

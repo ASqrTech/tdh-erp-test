@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import type { Role, User } from '../types';
 import { ROLE_PERMISSIONS } from '../constants';
 import { EyeIcon, PencilIcon, TrashIcon, DownloadIcon } from './Icons';
@@ -24,9 +25,9 @@ export const ManagerView: React.FC = () => {
     const [modalMode, setModalMode] = useState<'view' | 'edit' | null>(null);
     const [userToDeactivate, setUserToDeactivate] = useState<User | null>(null);
 
-    const handleAddUser = (e: React.FormEvent) => {
+    const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        const credentials = addUser(newEmployee);
+        const credentials = await addUser(newEmployee);
         setGeneratedCredentials(credentials);
         setNewEmployee(initialNewEmployeeState);
     };

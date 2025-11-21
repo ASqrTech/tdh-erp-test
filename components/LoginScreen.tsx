@@ -1,24 +1,26 @@
 
 import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export const LoginScreen: React.FC = () => {
-    const { login, requestPasswordReset, addUser } = useAuth();
-    const [email, setEmail] = useState('admin@example.com'); // Default for demo
-    const [password, setPassword] = useState('password'); // Default for demo
-    const [pin, setPin] = useState('');
+    const { login, requestPasswordReset, ensureHardcodedAdmin } = useAuth();
+    const navigate = useNavigate();
+    const [email, setEmail] = useState('admin@example.com');
+    const [password, setPassword] = useState('password');
+    const [pin, setPin] = useState('1234');
     const [error, setError] = useState('');
-    const [resetMessage, setResetMessage] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [showReset, setShowReset] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
-    const [newCreds, setNewCreds] = useState<{email: string, pin: string, password: string} | null>(null);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setNewCreds(null); 
+        setSuccessMessage('');
         try {
             await login(email, password, pin);
+            navigate('/dashboard');
         } catch (err: any) {
             setError(err.message);
         }
@@ -28,31 +30,20 @@ export const LoginScreen: React.FC = () => {
         e.preventDefault();
         try {
             await requestPasswordReset(resetEmail);
-            setResetMessage(`A password reset email has been sent to ${resetEmail}.`);
+            setSuccessMessage(`A password reset email has been sent to ${resetEmail}.`);
         } catch (err: any) {
-            setResetMessage(err.message);
+            setError(err.message);
         }
     }
 
-    const handleCreatePrimaryManager = async () => {
+    const handleEnsureAdmin = async () => {
         setError('');
-        setNewCreds(null);
-        const managerEmail = 'admin@example.com';
+        setSuccessMessage('');
         try {
-            const creds = await addUser({
-                name: 'Primary Admin',
-                email: managerEmail,
-                role: 'MANAGER',
-            });
-            setNewCreds({ ...creds, email: managerEmail });
-            setError(''); 
+            await ensureHardcodedAdmin();
+            setSuccessMessage('Admin account is ready. Please log in with email: admin@example.com, password: password, pin: 1234');
         } catch (err: any) {
-            if (err.message.includes('auth/email-already-in-use')) {
-                 setError(`Account '${managerEmail}' already exists. Please try to log in or reset the password.`);
-            } else {
-                setError(`Failed to create manager: ${err.message}`);
-            }
-            setNewCreds(null);
+            setError(`Failed to set up admin account: ${err.message}`);
         }
     };
 
@@ -65,15 +56,9 @@ export const LoginScreen: React.FC = () => {
                 </div>
 
                 <div className="bg-white p-8 rounded-xl shadow-lg">
-                    {newCreds && (
+                    {successMessage && (
                         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-                            <strong className="font-bold">Primary Manager Created!</strong>
-                            <span className="block sm:inline"> Please save these credentials and log in:</span>
-                            <ul className="list-disc list-inside">
-                                <li>Email: {newCreds.email}</li>
-                                <li>Password: {newCreds.password}</li>
-                                <li>PIN: {newCreds.pin}</li>
-                            </ul>
+                           <span className="block sm:inline">{successMessage}</span>
                         </div>
                     )}
                     <h2 className="text-2xl font-semibold text-center text-slate-700 mb-6">Employee Login</h2>
@@ -89,6 +74,7 @@ export const LoginScreen: React.FC = () => {
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                                 placeholder="e.g., 'admin@example.com'"
+                                autoComplete="email"
                                 required
                             />
                         </div>
@@ -103,6 +89,7 @@ export const LoginScreen: React.FC = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                                 placeholder="Your password"
+                                autoComplete="current-password"
                                 required
                             />
                         </div>
@@ -118,6 +105,7 @@ export const LoginScreen: React.FC = () => {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                                 placeholder="Your 4-digit PIN"
                                 maxLength={4}
+                                autoComplete="one-time-code"
                                 required
                             />
                         </div>
@@ -135,9 +123,9 @@ export const LoginScreen: React.FC = () => {
                         </button>
                     </div>
                     <div className="text-center mt-6 pt-4 border-t">
-                        <p className="text-sm text-gray-600 mb-2">First time setup:</p>
-                        <button type="button" onClick={handleCreatePrimaryManager} className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-700">
-                            Create Primary Manager
+                        <p className="text-sm text-gray-600 mb-2">First time setup or if admin login fails:</p>
+                        <button type="button" onClick={handleEnsureAdmin} className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-700">
+                            Create/Reset Admin Account
                         </button>
                     </div>
                 </div>
@@ -146,8 +134,8 @@ export const LoginScreen: React.FC = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm animate-fade-in">
                         <h3 className="text-lg font-semibold mb-4">Request Password Reset</h3>
-                        {resetMessage ? (
-                            <p className="text-green-600">{resetMessage}</p>
+                        {successMessage ? (
+                            <p className="text-green-600">{successMessage}</p>
                         ) : (
                             <form onSubmit={handlePasswordReset}>
                                 <p className="text-sm text-gray-600 mb-4">Enter your email address to receive a password reset link.</p>
@@ -157,6 +145,7 @@ export const LoginScreen: React.FC = () => {
                                     onChange={(e) => setResetEmail(e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                                     placeholder="Your email address"
+                                    autoComplete="email"
                                     required
                                 />
                                 <div className="mt-6 flex justify-end space-x-2">

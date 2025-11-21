@@ -1,8 +1,9 @@
 
 import React, { useState, useRef } from 'react';
 import { PROCESS_STAGES } from '../constants';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { FormFieldComponent } from './FormField';
+import { Modal } from './Modal';
 
 export const StorageForm: React.FC = () => {
     const { currentUser, verifyPin, submitStageData } = useAuth();
@@ -115,33 +116,31 @@ export const StorageForm: React.FC = () => {
                 </div>
             </form>
 
-            {isPinModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" onClick={handleCloseModal}>
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-sm animate-fade-in p-6" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold text-slate-800 mb-4">Confirm Entry</h3>
-                        <p className="text-sm text-slate-600 mb-4">Please enter your security PIN to log this entry.</p>
-                        <div>
-                            <label htmlFor="pin-input" className="sr-only">Security PIN</label>
-                            <input
-                                id="pin-input"
-                                type="password"
-                                value={pin}
-                                onChange={(e) => setPin(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handlePinConfirm()}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center text-2xl tracking-[.5em]"
-                                maxLength={4}
-                                placeholder="****"
-                                autoFocus
-                            />
-                        </div>
-                        {pinError && <p className="text-red-500 text-sm mt-2 text-center">{pinError}</p>}
-                        <div className="mt-6 flex justify-end space-x-2">
-                            <button type="button" onClick={handleCloseModal} className="px-4 py-2 bg-gray-200 rounded-md font-medium hover:bg-gray-300">Cancel</button>
-                            <button type="button" onClick={handlePinConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700">Confirm</button>
-                        </div>
+            <Modal isOpen={isPinModalOpen} onClose={handleCloseModal} containerClassName="max-w-sm">
+                <div className="p-6">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4">Confirm Entry</h3>
+                    <p className="text-sm text-slate-600 mb-4">Please enter your security PIN to log this entry.</p>
+                    <div>
+                        <label htmlFor="pin-input" className="sr-only">Security PIN</label>
+                        <input
+                            id="pin-input"
+                            type="password"
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handlePinConfirm()}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center text-2xl tracking-[.5em]"
+                            maxLength={4}
+                            placeholder="****"
+                            autoFocus
+                        />
+                    </div>
+                    {pinError && <p className="text-red-500 text-sm mt-2 text-center">{pinError}</p>}
+                    <div className="mt-6 flex justify-end space-x-2">
+                        <button type="button" onClick={handleCloseModal} className="px-4 py-2 bg-gray-200 rounded-md font-medium hover:bg-gray-300">Cancel</button>
+                        <button type="button" onClick={handlePinConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700">Confirm</button>
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 };

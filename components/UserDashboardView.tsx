@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { User, ProcessStage } from '../types';
 import { ROLE_PERMISSIONS, PROCESS_STAGES } from '../constants';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { StageCard } from './StageCard';
 import { GateEntryActivityTable } from './GateEntryActivityTable';
 import { WeighingActivityTable } from './WeighingActivityTable';

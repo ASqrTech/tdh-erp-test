@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import type { LogEntry } from '../types';
 import { PROCESS_STAGES } from '../constants';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 interface WeighingDetailsModalProps {
     log: LogEntry;

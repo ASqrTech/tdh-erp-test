@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PROCESS_STAGES } from '../constants';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { FormFieldComponent } from './FormField';
 import type { FormField } from '../types';
 

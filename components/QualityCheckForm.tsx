@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { PROCESS_STAGES } from '../constants';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { FormFieldComponent } from './FormField';
 
 const fileToBase64 = (file: File): Promise<string> => {
