@@ -1,8 +1,9 @@
 
 import React, { createContext, useState, ReactNode, useEffect, useContext } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from "firebase/auth";
 import { collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, query, where, getDocs, deleteDoc } from "firebase/firestore";
-import { auth, db } from '../firebase/firebase';
+import { auth, db, firebaseConfig } from '../firebase/firebase';
 import type { User, LogEntry, ProcessStage } from '../types';
 
 // The shape of the authentication context
@@ -19,10 +20,10 @@ interface AuthContextType {
     approvePasswordReset: (userId: string) => Promise<void>;
     updateUserDetails: (updatedUser: User) => Promise<void>;
     deactivateUser: (userId: string) => Promise<void>;
+    submitStageData: (stage: ProcessStage, data: Record<string, any>) => Promise<void>;
     // Deprecated functions that will be maintained for now
     ensureHardcodedAdmin: () => Promise<void>;
     updateUserProfile: (updatedUser: User) => Promise<void>;
-    submitStageData: (stage: ProcessStage, data: Record<string, any>) => Promise<void>;
     verifyPin: (pin: string) => boolean;
 }
 
@@ -72,7 +73,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }, (error) => console.error("Error listening to users collection:", error));
 
         const unsubscribeLogs = onSnapshot(collection(db, "logs"), snapshot => {
-            setLogs(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LogEntry[]);
+            setLogs(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as LogEntry)).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         }, (error) => console.error("Error listening to logs collection:", error));
 
         const unsubscribePasswordRequests = onSnapshot(collection(db, "passwordRequests"), snapshot => {
@@ -104,8 +105,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const addUser = async (details: Omit<User, 'id' | 'pin' | 'password' | 'status'>) => {
         const newPin = Math.floor(1000 + Math.random() * 9000).toString();
         const newPassword = 'password'; // Default password
-        
-        const userCredential = await createUserWithEmailAndPassword(auth, details.email, newPassword);
+
+        const secondaryAppName = 'secondary-auth';
+        let secondaryApp;
+        if (!getApps().some(app => app.name === secondaryAppName)) {
+            secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+        } else {
+            secondaryApp = getApp(secondaryAppName);
+        }
+        const secondaryAuth = getAuth(secondaryApp);
+
+        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, details.email, newPassword);
         const newUser = { ...details, pin: newPin, status: 'ACTIVE' };
         
         await setDoc(doc(db, "users", userCredential.user.uid), newUser);
@@ -120,11 +130,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await updateDoc(doc(db, "users", userId), { status: 'INACTIVE' });
     };
 
+    const submitStageData = async (stage: ProcessStage, data: Record<string, any>) => {
+        if (!currentUser) throw new Error("No authenticated user found.");
+
+        await addDoc(collection(db, "logs"), {
+            timestamp: new Date().toISOString(),
+            userId: currentUser.id,
+            userName: currentUser.name,
+            action: `${stage.id}_RECORDED`,
+            details: data,
+        });
+    };
+
     // --- Password Reset Flow ---
 
     const requestPasswordReset = async (email: string) => {
-        // We can't query by email directly in the rules, so we'll have to find the user on the client-side
-        // This is not ideal, but it's a limitation of the current setup.
         const userQuery = query(collection(db, "users"), where("email", "==", email));
         const querySnapshot = await getDocs(userQuery);
 
@@ -147,16 +167,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // --- Deprecated / Placeholder Functions ---
     const ensureHardcodedAdmin = async () => Promise.resolve();
     const updateUserProfile = async (updatedUser: User) => updateUserDetails(updatedUser);
-    const submitStageData = async () => Promise.resolve();
-    const verifyPin = () => true;
+    const verifyPin = (pin: string): boolean => {
+        if (!currentUser) return false;
+        return currentUser.pin === pin;
+    };
 
     // --- Value Export ---
     const value = { 
         currentUser, users, logs, passwordRequests, loading, 
         login, logout, addUser, requestPasswordReset, approvePasswordReset,
-        updateUserDetails, deactivateUser, 
+        updateUserDetails, deactivateUser, submitStageData,
         // Deprecated
-        ensureHardcodedAdmin, updateUserProfile, submitStageData, verifyPin
+        ensureHardcodedAdmin, updateUserProfile, verifyPin
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

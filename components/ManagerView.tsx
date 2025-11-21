@@ -192,7 +192,7 @@ export const ManagerView: React.FC = () => {
                         {generatedCredentials ? (
                              <div>
                                 <h4 className="font-semibold text-green-600">Employee Added Successfully!</h4>
-                                <p className="text-sm text-slate-600 mt-2 mb-4">Please share these temporary credentials with the new employee. They will be prompted to change their password on first login.</p>
+                                <p className="text-sm text-slate-600 mt-2 mb-4">Please share these credentials with the new employee. They will be prompted to change their password on first login.</p>
                                 <div className="bg-slate-100 p-4 rounded-md space-y-2">
                                     <p><span className="font-semibold">User ID:</span> {users.find(u => u.pin === generatedCredentials.pin)?.id}</p>
                                     <p><span className="font-semibold">PIN:</span> {generatedCredentials.pin}</p>

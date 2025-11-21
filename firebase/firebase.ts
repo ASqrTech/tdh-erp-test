@@ -1,10 +1,12 @@
+
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+// Make sure to export this so it can be used in other files
+export const firebaseConfig = {
   apiKey: "AIzaSyBj8qEWRmClgVZAxL2cEAZiUb6tR_Hnksg",
   authDomain: "tdh-erp.firebaseapp.com",
   projectId: "tdh-erp",

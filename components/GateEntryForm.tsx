@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { PROCESS_STAGES } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +29,7 @@ const outFields: FormField[] = [
     { name: 'broker_phone', label: 'Broker Phone No', type: 'tel', placeholder: 'e.g., 9876543211' },
     { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
 ];
+
 
 export const GateEntryForm: React.FC = () => {
     const { currentUser, verifyPin, submitStageData } = useAuth();
@@ -73,20 +75,14 @@ export const GateEntryForm: React.FC = () => {
         setIsPinModalOpen(true);
     };
 
-    const handlePinConfirm = async () => {
-        if (!currentUser || !submittedData || !arrivalStage) return;
+    const handlePinConfirm = () => {
+        if (!currentUser || !submittedData) return;
         
         if (verifyPin(pin)) {
-            try {
-                await submitStageData(arrivalStage, submittedData);
-                alert('Gate entry submitted successfully!');
-                handleCloseModal();
-                setSubmittedData(null);
-                formRef.current?.reset();
-            } catch (error) {
-                console.error("Error submitting gate entry: ", error);
-                alert('Failed to submit gate entry.');
-            }
+            submitStageData(arrivalStage!, submittedData);
+            handleCloseModal();
+            setSubmittedData(null);
+            formRef.current?.reset();
         } else {
             setPinError('Incorrect PIN. Please try again.');
             setPin('');

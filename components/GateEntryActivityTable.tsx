@@ -17,14 +17,11 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
         const now = new Date();
         const gateEntryLogs = logs
             .filter(log =>
-                log.action === 'SUBMIT_STAGE_DATA' &&
-                typeof log.details === 'object' &&
-                log.details.stageId === 'arrival'
+                log.action === 'arrival_RECORDED'
             )
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         return gateEntryLogs.filter(log => {
-            // Time Filter
             const logDate = new Date(log.timestamp);
             let timeMatch = false;
             switch (timeFilter) {
@@ -56,17 +53,14 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
             }
             if (!timeMatch) return false;
 
-            // Search Filter
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
-            const data = (log.details as any).submittedData;
+            const data = log.details as any;
             
             return (
                 data.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
                 data.driver_name?.toLowerCase().includes(lowercasedSearch) ||
-                data.serial_number?.toLowerCase().includes(lowercasedSearch) ||
-                data.from_broker?.toLowerCase().includes(lowercasedSearch) ||
-                data.broker_name?.toLowerCase().includes(lowercasedSearch)
+                data.challan_number?.toLowerCase().includes(lowercasedSearch)
             );
         });
 
@@ -90,7 +84,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-md w-full">
-            <h3 className="text-xl font-semibold text-slate-700 mb-4">Gate Entry Activity</h3>
+            <h3 className="text-xl font-semibold text-slate-700 mb-4">Recent Gate Activity</h3>
             <div className="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0">
                 <div className="relative w-full md:max-w-xs">
                     <input
@@ -130,7 +124,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                         onChange={e => setCustomEndDate(e.target.value)}
                         className="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
                     />
-                     <button 
+                    <button 
                         onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
                         className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-300 transition"
                     >
@@ -152,7 +146,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                     </thead>
                     <tbody>
                         {filteredLogs.length > 0 ? filteredLogs.map(log => {
-                            const data = (log.details as any).submittedData;
+                            const data = log.details as any;
                             const isOut = data.gate_mode === 'out';
                             return (
                                 <tr key={log.id} className="border-b hover:bg-slate-50">

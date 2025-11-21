@@ -15,11 +15,11 @@ export const GateEntryDetailsModal: React.FC<GateEntryDetailsModalProps> = ({ lo
         return () => window.removeEventListener('keydown', handleEsc);
     }, [onClose]);
 
-    if (log.action !== 'SUBMIT_STAGE_DATA' || typeof log.details !== 'object' || !log.details.submittedData) {
+    if (log.action !== 'arrival_RECORDED' || typeof log.details !== 'object') {
         return null;
     }
 
-    const data = log.details.submittedData;
+    const data = log.details as any;
     const isOutMode = data.gate_mode === 'out';
 
     const DetailItem: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => (
