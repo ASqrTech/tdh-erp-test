@@ -10,7 +10,7 @@
     "start": "npm run dev"
   },
   "dependencies": {
-    "firebase": "^10.12.2",
+    "firebase": "^12.6.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-router-dom": "^7.9.6"

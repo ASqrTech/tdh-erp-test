@@ -44,45 +44,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
                     setCurrentUser(doc.exists() ? { id: doc.id, ...doc.data() } as User : null);
                     setLoading(false);
+                }, (error) => {
+                    console.error("Error fetching user document:", error);
+                    setCurrentUser(null);
+                    setLoading(false);
                 });
                 return () => unsubscribeSnapshot();
             } else {
                 setCurrentUser(null);
+                setUsers([]);
+                setLogs([]);
+                setPasswordRequests([]);
                 setLoading(false);
             }
         });
         return () => unsubscribeAuth();
     }, []);
 
-    // Listener for the users collection
+    // Set up listeners for collections only when a user is authenticated
     useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, "users"), snapshot => {
-            setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as User[]);
-        });
-        return () => unsubscribe();
-    }, []);
+        if (!currentUser) {
+            return; // No user, no listeners
+        }
 
-    // Listener for the logs collection
-    useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, "logs"), snapshot => {
+        const unsubscribeUsers = onSnapshot(collection(db, "users"), snapshot => {
+            setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as User[]);
+        }, (error) => console.error("Error listening to users collection:", error));
+
+        const unsubscribeLogs = onSnapshot(collection(db, "logs"), snapshot => {
             setLogs(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LogEntry[]);
-        });
-        return () => unsubscribe();
-    }, []);
-    
-    // Listener for the passwordRequests collection
-    useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, "passwordRequests"), snapshot => {
+        }, (error) => console.error("Error listening to logs collection:", error));
+
+        const unsubscribePasswordRequests = onSnapshot(collection(db, "passwordRequests"), snapshot => {
             setPasswordRequests(snapshot.docs.map(doc => doc.id));
-        });
-        return () => unsubscribe();
-    }, []);
+        }, (error) => console.error("Error listening to passwordRequests collection:", error));
+
+        // Cleanup function
+        return () => {
+            unsubscribeUsers();
+            unsubscribeLogs();
+            unsubscribePasswordRequests();
+        };
+    }, [currentUser]); // Rerun this effect when the user changes
 
     // --- Core Functions ---
 
     const login = async (email: string, pass: string, pin: string) => {
         const userCredential = await signInWithEmailAndPassword(auth, email, pass);
         const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+        
         if (!userDoc.exists() || userDoc.data().pin !== pin) {
             await signOut(auth);
             throw new Error("Invalid credentials or PIN.");
@@ -113,6 +123,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // --- Password Reset Flow ---
 
     const requestPasswordReset = async (email: string) => {
+        // We can't query by email directly in the rules, so we'll have to find the user on the client-side
+        // This is not ideal, but it's a limitation of the current setup.
         const userQuery = query(collection(db, "users"), where("email", "==", email));
         const querySnapshot = await getDocs(userQuery);
 

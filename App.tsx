@@ -3,7 +3,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { Header } from './components/Header';
 import { ProcessFlowDiagram } from './components/ProcessFlowDiagram';
 import { StageDetailsModal } from './components/StageDetailsModal';
-import { LoginScreen } from './components/LoginScreen';
+import LoginScreen from './components/LoginScreen';
 import { ManagerView } from './components/ManagerView';
 import { DashboardView } from './components/DashboardView';
 import { UserDashboardView } from './components/UserDashboardView';
