@@ -43,7 +43,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (user) {
                 const userRef = doc(db, "users", user.uid);
                 const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
-                    setCurrentUser(doc.exists() ? { id: doc.id, ...doc.data() } as User : null);
+                    // Use user.uid as the canonical ID to prevent data inconsistency
+                    setCurrentUser(doc.exists() ? { id: user.uid, ...doc.data() } as User : null);
                     setLoading(false);
                 }, (error) => {
                     console.error("Error fetching user document:", error);
@@ -123,7 +124,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const updateUserDetails = async (updatedUser: User) => {
-        await updateDoc(doc(db, "users", updatedUser.id), updatedUser as any);
+        // Use setDoc with merge to prevent data loss and handle non-existent docs
+        await setDoc(doc(db, "users", updatedUser.id), updatedUser, { merge: true });
     };
 
     const deactivateUser = async (userId: string) => {

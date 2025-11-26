@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { User, Role } from '../types';
 import { ROLE_PERMISSIONS } from '../constants';
@@ -75,7 +76,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ user
                         </div>
                         
                         <div className="pt-4 border-t">
-                             <h3 className="text-md font-semibold text-gray-800 mb-2">Emergency & Family Information</h3>
+                             <h3 className="text-md font-semibold text-gray-800 mb-2">Emergency & Other Information</h3>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="emergencyContactName" className={labelClasses}>Emergency Contact Name</label>
@@ -87,8 +88,8 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ user
                                 </div>
                              </div>
                              <div className="mt-4">
-                                <label htmlFor="familyDetails" className={labelClasses}>Family Details</label>
-                                <textarea id="familyDetails" name="familyDetails" value={userData.familyDetails || ''} onChange={handleChange} rows={2} className={inputClasses} disabled={isReadOnly} />
+                                <label htmlFor="OtherDetails" className={labelClasses}>Other Details</label>
+                                <textarea id="OtherDetails" name="OtherDetails" value={userData.OtherDetails || ''} onChange={handleChange} rows={2} className={inputClasses} disabled={isReadOnly} />
                             </div>
                         </div>
 

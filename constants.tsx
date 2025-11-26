@@ -136,7 +136,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
         erpModule: 'Cleaning_Module',
         dependentOn: 'Raw Dal Arrival',
         output: 'Cleaned Batch Log',
-        description: 'Removal of dust, stones, and other impurities from the raw dal.',
+        description: 'Removal of dust, stones, and Other impurities from the raw dal.',
         color: {
             bg: 'bg-teal-100',
             text: 'text-teal-800',

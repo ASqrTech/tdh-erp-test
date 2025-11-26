@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ManagerView } from './ManagerView';
 import { GateEntryActivityTable } from './GateEntryActivityTable';
-import { UserDashboardView } from './UserDashboardView'; // A default view for other logged-in users
+import { UserDashboardView } from './UserDashboardView'; // A default view for Other logged-in users
 
 export const DashboardView: React.FC = () => {
     const { currentUser } = useAuth();
@@ -20,7 +20,7 @@ export const DashboardView: React.FC = () => {
             // The GateEntryActivityTable now includes the form and the table
             return <GateEntryActivityTable currentUser={currentUser} />;
         default:
-            // For any other authenticated role, show a generic user dashboard
+            // For any Other authenticated role, show a generic user dashboard
             return <UserDashboardView />;
     }
 };

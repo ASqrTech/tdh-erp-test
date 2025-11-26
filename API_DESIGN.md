@@ -23,7 +23,7 @@ Stores user account information and authentication details.
 | `address`               | `TEXT`           | `NULLABLE`                  |                                           |
 | `emergency_contact_name`| `VARCHAR(100)`   | `NULLABLE`                  |                                           |
 | `emergency_contact_phone`| `VARCHAR(20)`   | `NULLABLE`                  |                                           |
-| `family_details`        | `TEXT`           | `NULLABLE`                  | JSON or text blob                         |
+| `Other_details`        | `TEXT`           | `NULLABLE`                  | JSON or text blob                         |
 | `status`                | `VARCHAR(20)`    | `DEFAULT 'ACTIVE'`          | 'ACTIVE' or 'INACTIVE'                    |
 | `created_at`            | `TIMESTAMP`      | `DEFAULT CURRENT_TIMESTAMP` |                                           |
 
