@@ -3,7 +3,7 @@ export type Role =
     | 'MANAGER'
     | 'ASSISTANT_MANAGER'
     | 'GATE_ENTRY_OPERATOR'
-    | 'OPERATOR'
+    | 'WEIGHING_OPERATOR'
     | 'QUALITY_SUPERVISOR'
     | 'BIN_OPERATOR'
     | 'STORE_MANAGER';

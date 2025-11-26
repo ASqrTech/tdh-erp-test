@@ -68,7 +68,8 @@ export const ManagerView: React.FC = () => {
     };
 
     const handleDownloadLogs = () => {
-        if (logs.length === 0) {
+        const safeLogs = logs || [];
+        if (safeLogs.length === 0) {
             alert("No logs to download.");
             return;
         }
@@ -84,7 +85,7 @@ export const ManagerView: React.FC = () => {
     
         const csvContent = [
             headers.join(','),
-            ...logs.map(log => {
+            ...safeLogs.map(log => {
                 const detailsString = typeof log.details === 'string'
                     ? log.details
                     : JSON.stringify(log.details);
@@ -110,6 +111,8 @@ export const ManagerView: React.FC = () => {
     };
 
     const availableRoles = Object.keys(ROLE_PERMISSIONS).filter(r => r !== 'ADMIN');
+    const safeUsers = users || [];
+    const safePasswordRequests = passwordRequests || [];
 
     return (
         <div>
@@ -137,9 +140,9 @@ export const ManagerView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Team Members */}
                 <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Team Members ({users.length})</h3>
+                    <h3 className="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Team Members ({safeUsers.length})</h3>
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                        {users.map(user => (
+                        {safeUsers.map(user => (
                             <div key={user.id} className={`flex justify-between items-center p-3 bg-slate-50 rounded-md transition-opacity ${user.status === 'INACTIVE' ? 'opacity-50' : ''}`}>
                                 <div>
                                     <p className="font-semibold text-slate-800">{user.name} {user.status === 'INACTIVE' && <span className="text-xs text-red-500 font-normal">(Inactive)</span>}</p>
@@ -159,10 +162,10 @@ export const ManagerView: React.FC = () => {
 
                 {/* Password Reset Requests */}
                 <div className="bg-white p-6 rounded-lg shadow-md">
-                     <h3 className="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Password Reset Requests ({passwordRequests.length})</h3>
+                     <h3 className="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Password Reset Requests ({safePasswordRequests.length})</h3>
                      <div className="space-y-3">
-                         {passwordRequests.length > 0 ? passwordRequests.map(userId => {
-                             const user = users.find(u => u.id === userId);
+                         {safePasswordRequests.length > 0 ? safePasswordRequests.map(userId => {
+                             const user = safeUsers.find(u => u.id === userId);
                              return (
                                 <div key={userId} className="flex justify-between items-center p-3 bg-yellow-50 rounded-md">
                                     <div>
@@ -194,7 +197,7 @@ export const ManagerView: React.FC = () => {
                                 <h4 className="font-semibold text-green-600">Employee Added Successfully!</h4>
                                 <p className="text-sm text-slate-600 mt-2 mb-4">Please share these credentials with the new employee. They will be prompted to change their password on first login.</p>
                                 <div className="bg-slate-100 p-4 rounded-md space-y-2">
-                                    <p><span className="font-semibold">User ID:</span> {users.find(u => u.pin === generatedCredentials.pin)?.id}</p>
+                                    <p><span className="font-semibold">User ID:</span> {(users || []).find(u => u.pin === generatedCredentials.pin)?.id}</p>
                                     <p><span className="font-semibold">PIN:</span> {generatedCredentials.pin}</p>
                                     <p><span className="font-semibold">Password:</span> {generatedCredentials.password}</p>
                                 </div>

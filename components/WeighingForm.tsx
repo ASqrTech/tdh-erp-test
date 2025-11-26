@@ -33,7 +33,7 @@ export const WeighingForm: React.FC = () => {
         
         if (verifyPin(pin)) {
             try {
-                await submitStageData(weighingStage, submittedData);
+                await submitStageData(weighingStage.id, submittedData);
                 alert('Weighing record submitted successfully!');
                 handleCloseModal();
                 setSubmittedData(null);

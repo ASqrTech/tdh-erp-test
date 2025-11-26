@@ -65,7 +65,7 @@ const AppContent: React.FC = () => {
     const renderMainContent = () => {
         switch (view) {
             case 'dashboard':
-                return isManager ? <DashboardView /> : <UserDashboardView currentUser={currentUser} onStageClick={handleStageClick} />;
+                return isManager ? <DashboardView /> : <UserDashboardView />;
             case 'manage':
                 return isManager ? <ManagerView /> : null;
             case 'process':
@@ -75,7 +75,7 @@ const AppContent: React.FC = () => {
                 if (currentUser.role === 'GATE_ENTRY_OPERATOR') {
                     return <GateEntryForm />;
                 }
-                if (currentUser.role === 'OPERATOR') {
+                if (currentUser.role === 'WEIGHING_OPERATOR') {
                     return <WeighingForm />;
                 }
                 if (currentUser.role === 'QUALITY_SUPERVISOR') {
@@ -93,7 +93,7 @@ const AppContent: React.FC = () => {
         }
     };
 
-    const isDataEntryRole = ['GATE_ENTRY_OPERATOR', 'OPERATOR', 'QUALITY_SUPERVISOR', 'BIN_OPERATOR', 'STORE_MANAGER'].includes(currentUser.role);
+    const isDataEntryRole = ['GATE_ENTRY_OPERATOR', 'WEIGHING_OPERATOR', 'QUALITY_SUPERVISOR', 'BIN_OPERATOR', 'STORE_MANAGER'].includes(currentUser.role);
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
@@ -132,7 +132,7 @@ const AppContent: React.FC = () => {
                     />
                 ) : (
                     <StageDetailsModal
-                        stage={selected-stage}
+                        stage={selectedStage}
                         onClose={handleCloseModal}
                     />
                 )

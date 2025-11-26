@@ -1,42 +1,64 @@
-import React, { useState, useMemo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useMemo, useEffect } from 'react';
+import { db } from '../firebase/firebase';
+import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import type { User, LogEntry } from '../types';
-import { WeighingDetailsModal } from './WeighingDetailsModal';
+import { WeighingDetailsModal } from './WeighingDetailsModal'; // Ensure this is the correct modal
 
 type TimeFilter = '24h' | 'week' | 'month' | 'custom';
 
+// Helper to get nested property
+const getNested = (obj: any, path: string) => path.split('.').reduce((acc, part) => acc && acc[part], obj);
+
 export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ currentUser }) => {
-    const { logs } = useAuth();
+    const [weighingRecords, setWeighingRecords] = useState<LogEntry[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
-    const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+    const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
 
-    const filteredLogs = useMemo(() => {
-        const now = new Date();
-        const weighingLogs = logs
-            .filter(log =>
-                log.userId === currentUser.id &&
-                log.action === 'SUBMIT_STAGE_DATA' &&
-                typeof log.details === 'object' &&
-                log.details.stageId === 'weighing'
-            )
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    useEffect(() => {
+        // Assuming the collection is named 'weighing_records'
+        const q = query(collection(db, "weighing_records"), orderBy("timestamp", "desc"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const records: LogEntry[] = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                const timestamp = data.timestamp instanceof Timestamp
+                    ? data.timestamp.toDate().toISOString()
+                    : data.timestamp;
+                
+                return {
+                    id: doc.id,
+                    timestamp: timestamp,
+                    userId: data.userId,
+                    userName: data.userName,
+                    action: data.action || 'weighing_RECORDED',
+                    details: data.details || data, // Ensure details object is preserved
+                } as LogEntry;
+            });
+            setWeighingRecords(records);
+        }, (error) => {
+            console.error("Error fetching weighing records: ", error);
+        });
 
-        return weighingLogs.filter(log => {
-            // Time Filter
-            const logDate = new Date(log.timestamp);
+        return () => unsubscribe();
+    }, []);
+
+    const filteredRecords = useMemo(() => {
+        return (weighingRecords || []).filter(record => {
+            if (!record.timestamp || typeof record.details !== 'object') return false;
+
+            const recordDate = new Date(record.timestamp);
             let timeMatch = false;
             switch (timeFilter) {
                 case '24h':
-                    timeMatch = now.getTime() - logDate.getTime() < 24 * 60 * 60 * 1000;
+                    timeMatch = (new Date().getTime() - recordDate.getTime()) < 24 * 60 * 60 * 1000;
                     break;
                 case 'week':
-                    timeMatch = now.getTime() - logDate.getTime() < 7 * 24 * 60 * 60 * 1000;
+                    timeMatch = (new Date().getTime() - recordDate.getTime()) < 7 * 24 * 60 * 60 * 1000;
                     break;
                 case 'month':
-                    timeMatch = now.getTime() - logDate.getTime() < 30 * 24 * 60 * 60 * 1000;
+                    timeMatch = (new Date().getTime() - recordDate.getTime()) < 30 * 24 * 60 * 60 * 1000;
                     break;
                 case 'custom':
                     if (!customStartDate && !customEndDate) {
@@ -45,42 +67,31 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                     }
                     const start = customStartDate ? new Date(`${customStartDate}T00:00:00`) : null;
                     const end = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : null;
-
-                    if (start && end) {
-                        timeMatch = logDate >= start && logDate <= end;
-                    } else if (start) {
-                        timeMatch = logDate >= start;
-                    } else if (end) {
-                        timeMatch = logDate <= end;
-                    }
+                    if (start && end) timeMatch = recordDate >= start && recordDate <= end;
+                    else if (start) timeMatch = recordDate >= start;
+                    else if (end) timeMatch = recordDate <= end;
                     break;
+                default: timeMatch = true;
             }
             if (!timeMatch) return false;
 
-            // Search Filter
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
-            const data = (log.details as any).submittedData;
-            
+            const details = record.details as Record<string, any>;
+
             return (
-                data.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
-                data.ticket_number?.toLowerCase().includes(lowercasedSearch)
+                details.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
+                details.ticket_no?.toLowerCase().includes(lowercasedSearch) // Search by ticket number
             );
         });
+    }, [weighingRecords, searchTerm, timeFilter, customStartDate, customEndDate]);
 
-    }, [logs, currentUser.id, searchTerm, timeFilter, customStartDate, customEndDate]);
-
-    const formatTimestamp = (isoString: string) => {
-        return new Date(isoString).toLocaleString('en-US', {
-            dateStyle: 'medium',
-            timeStyle: 'short'
-        });
-    }
+    const formatTimestamp = (isoString: string) => new Date(isoString).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 
     const FilterButton: React.FC<{ filter: TimeFilter; label: string }> = ({ filter, label }) => (
         <button
             onClick={() => setTimeFilter(filter)}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${timeFilter === filter ? 'bg-red-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+            className={`flex-1 text-center px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${timeFilter === filter ? 'bg-red-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
         >
             {label}
         </button>
@@ -88,7 +99,7 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-md w-full">
-            <h3 className="text-xl font-semibold text-slate-700 mb-4">Weighing Activity</h3>
+            <h3 className="text-xl font-semibold text-slate-700 mb-4">Recent Weighing Activity</h3>
             <div className="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0">
                 <div className="relative w-full md:max-w-xs">
                     <input
@@ -99,10 +110,10 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>
                     </div>
                 </div>
-                <div className="flex items-center space-x-2 p-1 bg-slate-100 rounded-lg">
+                <div className="grid grid-cols-2 md:flex gap-2 p-1 bg-slate-100 rounded-lg w-full md:w-auto">
                     <FilterButton filter="24h" label="Last 24h" />
                     <FilterButton filter="week" label="This Week" />
                     <FilterButton filter="month" label="This Month" />
@@ -113,27 +124,10 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
             {timeFilter === 'custom' && (
                 <div className="flex flex-col sm:flex-row items-center gap-2 mb-4 p-2 bg-slate-50 rounded-lg justify-center">
                     <label htmlFor="start-date" className="text-sm font-medium text-slate-600">From:</label>
-                    <input
-                        id="start-date"
-                        type="date"
-                        value={customStartDate}
-                        onChange={e => setCustomStartDate(e.target.value)}
-                        className="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
-                    />
+                    <input id="start-date" type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-red-500"/>
                     <label htmlFor="end-date" className="text-sm font-medium text-slate-600">To:</label>
-                    <input
-                        id="end-date"
-                        type="date"
-                        value={customEndDate}
-                        onChange={e => setCustomEndDate(e.target.value)}
-                        className="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
-                    />
-                    <button 
-                        onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
-                        className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-300 transition"
-                    >
-                        Clear
-                    </button>
+                    <input id="end-date" type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-red-500"/>
+                    <button onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }} className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-300 transition">Clear</button>
                 </div>
             )}
 
@@ -149,42 +143,44 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredLogs.length > 0 ? filteredLogs.map(log => {
-                            const data = (log.details as any).submittedData;
-                            const inWeight = parseFloat(data.in_weight) || 0;
-                            const outWeight = parseFloat(data.out_weight) || 0;
-                            const netWeight = inWeight - outWeight;
+                        {filteredRecords.length > 0 ? filteredRecords.map(record => {
+                            if (typeof record.details !== 'object' || record.details === null) {
+                                return <tr key={record.id}><td colSpan={5} className="text-center p-4 text-red-500">Invalid record data</td></tr>;
+                            }
+                            const details = record.details as Record<string, any>;
+                            const inWeight = parseFloat(details.in_weight) || 0;
+                            const outWeight = parseFloat(details.out_weight) || 0;
+                            const netWeight = Math.abs(inWeight - outWeight) / 100; // Assuming weight is in kgs, converting to quintals
+
                             return (
-                                <tr key={log.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
-                                    <td className="p-3 font-medium text-slate-800">{data.vehicle_number}</td>
-                                    <td className="p-3">{data.ticket_number}</td>
-                                    <td className="p-3 font-semibold">{netWeight.toFixed(2)}</td>
+                                <tr key={record.id} className="border-b hover:bg-slate-50">
+                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
+                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
+                                    <td className="p-3 text-slate-600">{details.ticket_number}</td>
+                                    <td className="p-3 font-bold text-slate-800">{netWeight > 0 ? netWeight.toFixed(2) : '-'}</td>
                                     <td className="p-3">
                                         <button 
-                                            onClick={() => setSelectedLog(log)}
+                                            onClick={() => setSelectedRecord(record)} 
                                             className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full hover:bg-red-200 transition"
                                         >
                                             Details
                                         </button>
                                     </td>
                                 </tr>
-                            )
+                            );
                         }) : (
                             <tr>
-                                <td colSpan={5} className="text-center p-8 text-slate-500">
-                                    No entries found for the selected criteria.
-                                </td>
+                                <td colSpan={5} className="text-center p-8 text-slate-500">No entries found for the selected criteria.</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
 
-            {selectedLog && (
+            {selectedRecord && (
                 <WeighingDetailsModal 
-                    log={selectedLog}
-                    onClose={() => setSelectedLog(null)}
+                    record={selectedRecord} // Pass the entire log entry
+                    onClose={() => setSelectedRecord(null)}
                 />
             )}
         </div>

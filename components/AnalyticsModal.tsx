@@ -176,7 +176,7 @@ const ActivityLogTable: React.FC<ActivityLogTableProps> = ({ logs, stageId }) =>
                     onChange={e => setSearchTerm(e.target.value)}
                     className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
-                <div className="flex items-center space-x-2 p-1 bg-slate-100 rounded-lg">
+                <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-100 rounded-lg">
                     <FilterButton filter="24h" label="Last 24h" />
                     <FilterButton filter="week" label="This Week" />
                     <FilterButton filter="month" label="This Month" />

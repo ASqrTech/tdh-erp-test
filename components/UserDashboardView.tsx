@@ -1,6 +1,5 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-// 1. We import the 'Role' type instead of 'UserRole'
 import { Role } from '../types'; 
 import { 
     TruckIcon, ScaleIcon, ArchiveBoxIcon, CubeIcon, 
@@ -10,6 +9,7 @@ import {
 import { WeighingActivityTable } from './WeighingActivityTable';
 import { GateEntryActivityTable } from './GateEntryActivityTable';
 import { StorageActivityTable } from './StorageActivityTable';
+import { QualityCheckActivityTable } from './QualityCheckActivityTable';
 
 const StatCard = ({ icon, label, value }: { icon: JSX.Element, label: string, value: string | number }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm flex items-center space-x-3 border border-slate-100">
@@ -45,10 +45,9 @@ export const UserDashboardView = () => {
             activityComponent: null as React.ReactNode,
         };
 
-        // 2. We switch on the string values defined in your new types.ts
         switch (currentUser.role) {
             case 'ADMIN':
-            case 'MANAGER': // Added MANAGER to share Admin view or you can separate it
+            case 'MANAGER':
                 return {
                     ...baseData,
                     greeting: "Admin Dashboard",
@@ -77,13 +76,13 @@ export const UserDashboardView = () => {
                         { icon: <ClipboardListIcon />, label: "Pending Inward", value: "4" },
                         { icon: <ClockIcon />, label: "Avg. Turnaround", value: "25m" },
                     ],
-                    activityComponent: <GateEntryActivityTable />
+                    activityComponent: <GateEntryActivityTable currentUser={currentUser}/>
                 };
 
-            case 'OPERATOR': // Assuming this is the Weighbridge Operator
+            case 'WEIGHING_OPERATOR':
                 return {
                     ...baseData,
-                    greeting: "Weighbridge Control",
+                    greeting: "Weighing Operator Console",
                     quote: "Ensuring accurate and efficient weight recording.",
                     summaryCards: [
                         { icon: <ScaleIcon />, label: "Total Weigh-ins", value: "80" },
@@ -91,7 +90,21 @@ export const UserDashboardView = () => {
                         { icon: <TruckIcon />, label: "Gross Weighted", value: "15" },
                         { icon: <ClockIcon />, label: "Avg. Weight Time", value: "8m" },
                     ],
-                    activityComponent: <WeighingActivityTable />
+                    activityComponent: <WeighingActivityTable currentUser={currentUser}/>
+                };
+
+            case 'QUALITY_SUPERVISOR':
+                return {
+                    ...baseData,
+                    greeting: "Quality Check Dashboard",
+                    quote: "Ensuring all materials meet the required standards.",
+                    summaryCards: [
+                        { icon: <ShieldCheckIcon />, label: "Inspections Today", value: "25" },
+                        { icon: <ClipboardListIcon />, label: "Pending Tests", value: "5" },
+                        { icon: <ExclamationCircleIcon />, label: "Rejections", value: "1" },
+                        { icon: <ChartBarIcon />, label: "Approval Rate", value: "96%" },
+                    ],
+                    activityComponent: <QualityCheckActivityTable currentUser={currentUser}/>
                 };
 
             case 'STORE_MANAGER':
@@ -106,12 +119,15 @@ export const UserDashboardView = () => {
                         { icon: <ClipboardListIcon />, label: "Stockouts", value: "0" },
                         { icon: <ClockIcon />, label: "Avg. Storage Time", value: "48h" },
                     ],
-                    activityComponent: <StorageActivityTable />
+                    activityComponent: <StorageActivityTable currentUser={currentUser}/>
                 };
 
             default:
-                // Default view for roles like QUALITY_SUPERVISOR or ASSISTANT_MANAGER if not specified above
-                return baseData;
+                return {
+                    ...baseData,
+                    mainActions: [],
+                    summaryCards: [],
+                };
         }
     };
 
@@ -119,13 +135,11 @@ export const UserDashboardView = () => {
 
     return (
         <div className="p-4 md:p-6 space-y-8 bg-slate-50 min-h-screen">
-            {/* Header Section */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-800">{data.greeting}</h1>
                 <p className="text-slate-500 mt-1">{data.quote}</p>
             </div>
 
-            {/* Summary Cards Section */}
             {data.summaryCards.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {data.summaryCards.map((card, index) => (
@@ -139,7 +153,6 @@ export const UserDashboardView = () => {
                 </div>
             )}
 
-            {/* Main Actions */}
             {data.mainActions.length > 0 && (
                 <div>
                     <h2 className="text-lg font-semibold text-slate-700 mb-3">Quick Actions</h2>
@@ -161,10 +174,9 @@ export const UserDashboardView = () => {
                 </div>
             )}
 
-            {/* Activity Table */}
             {data.activityComponent && (
                 <div className="w-full">
-                    <h2 className="text-lg font-semibold text-slate-700 mb-3">Recent Activity</h2>
+                    {/* <h2 className="text-lg font-semibold text-slate-700 mb-3">Recent Activity</h2> */}
                     {data.activityComponent}
                 </div>
             )}

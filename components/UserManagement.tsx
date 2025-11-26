@@ -7,7 +7,7 @@ import { EmployeeDetailsModal } from './EmployeeDetailsModal';
 
 const initialNewEmployeeState = {
     name: '',
-    role: 'OPERATOR' as Role,
+    role: 'WEIGHING_OPERATOR' as Role,
     address: '',
     phone: '',
     email: ''

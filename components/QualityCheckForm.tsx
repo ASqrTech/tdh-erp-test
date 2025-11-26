@@ -22,12 +22,16 @@ export const QualityCheckForm: React.FC = () => {
     const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const qualityStage = PROCESS_STAGES.find(stage => stage.id === 'quality_check_1');
+    // CORRECTED: Use 'quality-check' which matches the collection name logic
+    const qualityStage = PROCESS_STAGES.find(stage => stage.id === 'quality-check');
 
-    if (!qualityStage) return <p className="text-center text-red-500">Error: Quality Check stage configuration not found.</p>;
+    if (!qualityStage) {
+        // Handle case where stage is not found to prevent runtime errors
+        return <p className="text-center text-red-500">Error: Quality Check stage configuration could not be found. Please contact an administrator.</p>;
+    }
 
     const qualityFields = qualityStage.formFields;
-    
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -45,34 +49,40 @@ export const QualityCheckForm: React.FC = () => {
                 return;
             }
         } else {
+            // Ensure the property exists even if empty
             data.upload_report = '';
         }
-        
+
         setSubmittedData(data);
         setIsSubmitting(false);
         setIsPinModalOpen(true);
     };
 
     const handlePinConfirm = async () => {
-        if (!currentUser || !submittedData) return;
-        
+        // Add checks for qualityStage and submittedData
+        if (!currentUser || !submittedData || !qualityStage) {
+            console.error("Confirmation failed: prerequisites not met.", { currentUser, submittedData, qualityStage });
+            return;
+        }
+
         if (verifyPin(pin)) {
             try {
-                await submitStageData(qualityStage, submittedData);
+                // CORRECTED: Pass the stage ID (string), not the whole object
+                await submitStageData(qualityStage.id, submittedData);
                 alert('Quality check report submitted successfully!');
                 handleCloseModal();
-                setSubmittedData(null);
+                setSubmittedData(null); // Clear data after submission
                 formRef.current?.reset();
             } catch (error) {
                 console.error("Error submitting quality check: ", error);
-                alert('Failed to submit quality check report.');
+                alert('Failed to submit quality check report. Check console for details.');
             }
         } else {
             setPinError('Incorrect PIN. Please try again.');
-            setPin('');
+            setPin(''); // Clear pin for security
         }
     };
-    
+
     const handleCloseModal = () => {
         setIsPinModalOpen(false);
         setPin('');
@@ -89,9 +99,9 @@ export const QualityCheckForm: React.FC = () => {
                 <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md space-y-4">
                     <h3 className="text-xl font-semibold text-slate-700 border-b pb-2">{qualityFields[0].label}</h3>
                     {qualityFields.slice(1).map(field => (
-                        <FormFieldComponent 
-                            key={field.name} 
-                            field={field} 
+                        <FormFieldComponent
+                            key={field.name}
+                            field={field}
                             layout="horizontal"
                         />
                     ))}

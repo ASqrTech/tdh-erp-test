@@ -95,7 +95,7 @@ export const BinOperationActivityTable: React.FC<{ currentUser: User }> = ({ cur
     const FilterButton: React.FC<{ filter: TimeFilter; label: string }> = ({ filter, label }) => (
         <button
             onClick={() => setTimeFilter(filter)}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${timeFilter === filter ? 'bg-red-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+            className={`flex-1 text-center px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${timeFilter === filter ? 'bg-red-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
         >
             {label}
         </button>
@@ -117,7 +117,7 @@ export const BinOperationActivityTable: React.FC<{ currentUser: User }> = ({ cur
                         <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
                 </div>
-                <div className="flex items-center space-x-2 p-1 bg-slate-100 rounded-lg">
+                <div className="grid grid-cols-2 md:flex gap-2 p-1 bg-slate-100 rounded-lg w-full md:w-auto">
                     <FilterButton filter="24h" label="Last 24h" />
                     <FilterButton filter="week" label="This Week" />
                     <FilterButton filter="month" label="This Month" />
