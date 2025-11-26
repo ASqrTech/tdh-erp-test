@@ -144,8 +144,8 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
                             <th className="p-3">Timestamp</th>
-                            <th className="p-3">Vehicle No.</th>
-                            <th className="p-3">Ticket No.</th>
+                            <th className="p-3">Vehicle No</th>
+                            <th className="p-3">Transaction ID</th>
                             <th className="p-3">Status</th>
                             <th className="p-3">Moisture (%)</th>
                             <th className="p-3">Actions</th>
@@ -162,9 +162,9 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
                                     <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
                                     <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
-                                    <td className="p-3 text-slate-600">{details.ticket_no}</td>
+                                    <td className="p-3 text-slate-600">{details.transaction_id}</td>
                                     <td className="p-3">{getStatusChip(details.quality_status)}</td>
-                                    <td className="p-3 font-bold text-slate-800">{details.moisture_content || '-'}</td>
+                                    <td className="p-3 font-bold text-slate-800">{details.moisture_content_percent || '-'}</td>
                                     <td className="p-3">
                                         <button 
                                             onClick={() => setSelectedRecord(record)} 
