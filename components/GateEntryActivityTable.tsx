@@ -1,38 +1,55 @@
-import React, { useState, useMemo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useMemo, useEffect } from 'react';
+import { db } from '../firebase/firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import type { User, LogEntry } from '../types';
 import { GateEntryDetailsModal } from './GateEntryDetailsModal';
 
 type TimeFilter = '24h' | 'week' | 'month' | 'custom';
 
 export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ currentUser }) => {
-    const { logs } = useAuth();
+    const [gateRecords, setGateRecords] = useState<LogEntry[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
-    const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+    const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
 
-    const filteredLogs = useMemo(() => {
+    useEffect(() => {
+        const q = query(collection(db, "arrival_records"), orderBy("timestamp", "desc"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const records: LogEntry[] = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    timestamp: data.timestamp.toDate().toISOString(),
+                    userId: data.userId || '',
+                    userName: data.userName || '',
+                    action: 'arrival_RECORDED',
+                    details: data
+                };
+            });
+            setGateRecords(records);
+        }, (error) => {
+            console.error("Error fetching arrival records: ", error);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const filteredRecords = useMemo(() => {
         const now = new Date();
-        const gateEntryLogs = logs
-            .filter(log =>
-                log.action === 'arrival_RECORDED'
-            )
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-        return gateEntryLogs.filter(log => {
-            const logDate = new Date(log.timestamp);
+        return (gateRecords || []).filter(record => {
+            const recordDate = new Date(record.timestamp);
             let timeMatch = false;
             switch (timeFilter) {
                 case '24h':
-                    timeMatch = now.getTime() - logDate.getTime() < 24 * 60 * 60 * 1000;
+                    timeMatch = now.getTime() - recordDate.getTime() < 24 * 60 * 60 * 1000;
                     break;
                 case 'week':
-                    timeMatch = now.getTime() - logDate.getTime() < 7 * 24 * 60 * 60 * 1000;
+                    timeMatch = now.getTime() - recordDate.getTime() < 7 * 24 * 60 * 60 * 1000;
                     break;
                 case 'month':
-                    timeMatch = now.getTime() - logDate.getTime() < 30 * 24 * 60 * 60 * 1000;
+                    timeMatch = now.getTime() - recordDate.getTime() < 30 * 24 * 60 * 60 * 1000;
                     break;
                 case 'custom':
                     if (!customStartDate && !customEndDate) {
@@ -43,11 +60,11 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                     const end = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : null;
 
                     if (start && end) {
-                        timeMatch = logDate >= start && logDate <= end;
+                        timeMatch = recordDate >= start && recordDate <= end;
                     } else if (start) {
-                        timeMatch = logDate >= start;
+                        timeMatch = recordDate >= start;
                     } else if (end) {
-                        timeMatch = logDate <= end;
+                        timeMatch = recordDate <= end;
                     }
                     break;
             }
@@ -55,7 +72,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
 
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
-            const data = log.details as any;
+            const data = record.details as any;
             
             return (
                 data.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
@@ -64,7 +81,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
             );
         });
 
-    }, [logs, searchTerm, timeFilter, customStartDate, customEndDate]);
+    }, [gateRecords, searchTerm, timeFilter, customStartDate, customEndDate]);
 
     const formatTimestamp = (isoString: string) => {
         return new Date(isoString).toLocaleString('en-US', {
@@ -98,7 +115,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                         <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
                 </div>
-                <div className="flex items-center space-x-2 p-1 bg-slate-100 rounded-lg w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-100 rounded-lg w-full md:w-auto">
                     <FilterButton filter="24h" label="Last 24h" />
                     <FilterButton filter="week" label="This Week" />
                     <FilterButton filter="month" label="This Month" />
@@ -145,12 +162,12 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredLogs.length > 0 ? filteredLogs.map(log => {
-                            const data = log.details as any;
+                        {filteredRecords.length > 0 ? filteredRecords.map(record => {
+                            const data = record.details as any;
                             const isOut = data.gate_mode === 'out';
                             return (
-                                <tr key={log.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
+                                <tr key={record.id} className="border-b hover:bg-slate-50">
+                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
                                     <td className="p-3">
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full uppercase ${
                                             isOut ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
@@ -162,7 +179,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                                     <td className="p-3">{data.driver_name}</td>
                                     <td className="p-3">
                                         <button 
-                                            onClick={() => setSelectedLog(log)}
+                                            onClick={() => setSelectedRecord(record)}
                                             className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full hover:bg-red-200 transition"
                                         >
                                             Details
@@ -181,10 +198,10 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                 </table>
             </div>
 
-            {selectedLog && (
+            {selectedRecord && (
                 <GateEntryDetailsModal 
-                    log={selectedLog}
-                    onClose={() => setSelectedLog(null)}
+                    log={selectedRecord}
+                    onClose={() => setSelectedRecord(null)}
                 />
             )}
         </div>
