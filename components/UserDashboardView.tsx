@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
+// 1. We import the 'Role' type instead of 'UserRole'
+import { Role } from '../types'; 
 import { 
     TruckIcon, ScaleIcon, ArchiveBoxIcon, CubeIcon, 
     ClipboardListIcon, ClockIcon, ExclamationCircleIcon, CogIcon, ShieldCheckIcon, 
@@ -12,13 +12,13 @@ import { GateEntryActivityTable } from './GateEntryActivityTable';
 import { StorageActivityTable } from './StorageActivityTable';
 
 const StatCard = ({ icon, label, value }: { icon: JSX.Element, label: string, value: string | number }) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm flex items-center space-x-3">
-        <div className="bg-red-100 p-2 rounded-full">
+    <div className="bg-white p-4 rounded-lg shadow-sm flex items-center space-x-3 border border-slate-100">
+        <div className="bg-red-50 p-3 rounded-full text-red-600">
             {icon}
         </div>
         <div>
-            <p className="text-sm text-slate-500">{label}</p>
-            <p className="text-lg font-semibold text-slate-700">{value}</p>
+            <p className="text-sm text-slate-500 font-medium">{label}</p>
+            <p className="text-xl font-bold text-slate-800">{value}</p>
         </div>
     </div>
 );
@@ -28,24 +28,27 @@ export const UserDashboardView = () => {
 
     if (!currentUser) {
         return (
-            <div className="p-8 text-center">
-                <h1 className="text-xl font-semibold text-red-600">An Error Occurred</h1>
-                <p className="text-slate-500 mt-2">We couldn\'t load your dashboard. Please try logging out and back in.</p>
+            <div className="p-8 text-center flex flex-col items-center justify-center h-screen bg-slate-50">
+                <ExclamationCircleIcon />
+                <h1 className="text-xl font-semibold text-red-600 mt-4">An Error Occurred</h1>
+                <p className="text-slate-500 mt-2">We couldn't load your dashboard. Please try logging out and back in.</p>
             </div>
         );
     }
 
     const getDashboardData = () => {
         const baseData = {
-            greeting: `Welcome, ${currentUser.name}`,
-            quote: "Ready to make an impact? Here\'s your current standing.",
-            summaryCards: [],
-            mainActions: [],
+            greeting: `Welcome, ${currentUser.name || 'User'}`,
+            quote: "Ready to make an impact? Here's your current standing.",
+            summaryCards: [] as { icon: JSX.Element, label: string, value: string | number }[],
+            mainActions: [] as { label: string, icon: JSX.Element, path: string }[],
             activityComponent: null as React.ReactNode,
         };
 
+        // 2. We switch on the string values defined in your new types.ts
         switch (currentUser.role) {
-            case UserRole.ADMIN:
+            case 'ADMIN':
+            case 'MANAGER': // Added MANAGER to share Admin view or you can separate it
                 return {
                     ...baseData,
                     greeting: "Admin Dashboard",
@@ -63,26 +66,26 @@ export const UserDashboardView = () => {
                     ]
                 };
 
-            case UserRole.GATE_SECURITY:
+            case 'GATE_ENTRY_OPERATOR':
                 return {
                     ...baseData,
-                    greeting: "Gate Security Console",
+                    greeting: "Gate Entry Console",
                     quote: "Securing and managing all entry and exit points.",
-                     summaryCards: [
-                        { icon: <TruckIcon />, label: "Today\'s Entries", value: "42" },
-                        { icon: <TruckIcon className="transform -scale-x-100" />, label: "Today\'s Exits", value: "38" },
+                    summaryCards: [
+                        { icon: <TruckIcon />, label: "Today's Entries", value: "42" },
+                        { icon: <TruckIcon />, label: "Today's Exits", value: "38" },
                         { icon: <ClipboardListIcon />, label: "Pending Inward", value: "4" },
                         { icon: <ClockIcon />, label: "Avg. Turnaround", value: "25m" },
                     ],
                     activityComponent: <GateEntryActivityTable />
                 };
 
-            case UserRole.WEIGHBRIDGE_OPERATOR:
+            case 'OPERATOR': // Assuming this is the Weighbridge Operator
                 return {
                     ...baseData,
                     greeting: "Weighbridge Control",
                     quote: "Ensuring accurate and efficient weight recording.",
-                     summaryCards: [
+                    summaryCards: [
                         { icon: <ScaleIcon />, label: "Total Weigh-ins", value: "80" },
                         { icon: <DocumentTextIcon />, label: "Tare Registered", value: "65" },
                         { icon: <TruckIcon />, label: "Gross Weighted", value: "15" },
@@ -91,12 +94,13 @@ export const UserDashboardView = () => {
                     activityComponent: <WeighingActivityTable />
                 };
 
-            case UserRole.STORAGE_SUPERVISOR:
+            case 'STORE_MANAGER':
+            case 'BIN_OPERATOR':
                 return {
                     ...baseData,
                     greeting: "Storage Management",
                     quote: "Oversee all stored materials.",
-                     summaryCards: [
+                    summaryCards: [
                         { icon: <ArchiveBoxIcon />, label: "Total Stored", value: "4500 MT" },
                         { icon: <CubeIcon />, label: "Stock Value", value: "₹ 1.2 Cr" },
                         { icon: <ClipboardListIcon />, label: "Stockouts", value: "0" },
@@ -104,7 +108,9 @@ export const UserDashboardView = () => {
                     ],
                     activityComponent: <StorageActivityTable />
                 };
+
             default:
+                // Default view for roles like QUALITY_SUPERVISOR or ASSISTANT_MANAGER if not specified above
                 return baseData;
         }
     };
@@ -112,34 +118,54 @@ export const UserDashboardView = () => {
     const data = getDashboardData();
 
     return (
-        <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
+        <div className="p-4 md:p-6 space-y-8 bg-slate-50 min-h-screen">
+            {/* Header Section */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-800">{data.greeting}</h1>
-                <p className="text-slate-500">{data.quote}</p>
+                <p className="text-slate-500 mt-1">{data.quote}</p>
             </div>
 
-            {/* Full-width container for the activity table */}
-            <div className="w-full">
-                {data.activityComponent}
-            </div>
+            {/* Summary Cards Section */}
+            {data.summaryCards.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {data.summaryCards.map((card, index) => (
+                        <StatCard 
+                            key={index} 
+                            icon={card.icon} 
+                            label={card.label} 
+                            value={card.value} 
+                        />
+                    ))}
+                </div>
+            )}
 
-            {/* Main Actions for Admin */}
+            {/* Main Actions */}
             {data.mainActions.length > 0 && (
                 <div>
                     <h2 className="text-lg font-semibold text-slate-700 mb-3">Quick Actions</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {data.mainActions.map((action, index) => (
-                            <a href={action.path} key={index} className="bg-white p-5 rounded-lg shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
+                            <a href={action.path} key={index} className="bg-white p-5 rounded-lg shadow-sm hover:shadow-md transition-all border border-slate-100 flex items-center justify-between group">
                                 <div className="flex items-center space-x-3">
-                                    <div className="bg-red-100 p-2 rounded-full">
+                                    <div className="bg-red-50 text-red-600 p-2 rounded-lg group-hover:bg-red-100 transition-colors">
                                         {action.icon}
                                     </div>
                                     <span className="font-semibold text-slate-700">{action.label}</span>
                                 </div>
-                                <ArrowRightIcon />
+                                <div className="text-slate-400 group-hover:text-red-500 transition-colors">
+                                    <ArrowRightIcon />
+                                </div>
                             </a>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Activity Table */}
+            {data.activityComponent && (
+                <div className="w-full">
+                    <h2 className="text-lg font-semibold text-slate-700 mb-3">Recent Activity</h2>
+                    {data.activityComponent}
                 </div>
             )}
         </div>
