@@ -149,7 +149,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'storage',
         name: 'Storage',
-        responsibleRole: 'Store Manager',
+        responsibleRole: 'Store Operator',
         erpModule: 'Storage_Module',
         dependentOn: 'Quality Check',
         output: 'Stored Batch Record',

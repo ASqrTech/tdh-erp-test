@@ -156,7 +156,7 @@ Inventory tracking after cleaning/binning.
 | `location_area`   | `VARCHAR(50)`    |                             | e.g., Kallam, Baddi                       |
 | `location_unit`   | `VARCHAR(50)`    |                             | e.g., 1, 2, A, B                          |
 | `timestamp`       | `TIMESTAMP`      | `DEFAULT CURRENT_TIMESTAMP` |                                           |
-| `created_by`      | `VARCHAR(50)`    | `FK to users.id`            | Store Manager ID                          |
+| `created_by`      | `VARCHAR(50)`    | `FK to users.id`            | Store Operator ID                          |
 
 #### `processing_logs` (Stage: Processing)
 | Column          | Type             | Constraints                 | Description                               |
