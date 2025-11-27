@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -11,6 +12,7 @@ import { StorageActivityTable } from './StorageActivityTable';
 import { QualityCheckActivityTable } from './QualityCheckActivityTable';
 import { DispatchActivityTable } from './DispatchActivityTable';
 
+// A generic card for displaying stats
 const StatCard = ({ icon, label, value }: { icon: JSX.Element, label: string, value: string | number }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm flex items-center space-x-3 border border-slate-100">
         <div className="bg-red-50 p-3 rounded-full text-red-600">
@@ -23,30 +25,30 @@ const StatCard = ({ icon, label, value }: { icon: JSX.Element, label: string, va
     </div>
 );
 
-export const UserDashboardView = () => {
+export const UserDashboardView: React.FC = () => {
     const { currentUser } = useAuth();
 
+    // If there's no user, show an error message.
     if (!currentUser) {
         return (
-            <div className="p-8 text-center flex flex-col items-center justify-center h-screen bg-slate-50">
+            <div className="p-8 text-center flex flex-col items-center justify-center h-full bg-slate-50">
                 <ExclamationCircleIcon />
                 <h1 className="text-xl font-semibold text-red-600 mt-4">An Error Occurred</h1>
-                <p className="text-slate-500 mt-2">We couldn't load your dashboard. Please try logging out and back in.</p>
+                <p className="text-slate-500 mt-2">Could not load user dashboard. Please try logging out and back in.</p>
             </div>
         );
     }
 
+    // This function determines what to show on the dashboard based on the user's role.
     const getDashboardData = () => {
         const baseData = {
             greeting: `Welcome, ${currentUser.name || 'User'}`,
             quote: "Ready to make an impact? Here's your current standing.",
             summaryCards: [] as { icon: JSX.Element, label: string, value: string | number }[],
-            mainActions: [] as { label: string, icon: JSX.Element, path: string }[],
             activityComponent: null as React.ReactNode,
         };
 
         switch (currentUser.role) {
-
             case 'DISPATCH_OPERATOR':
                 return {
                     ...baseData,
@@ -58,27 +60,7 @@ export const UserDashboardView = () => {
                         { icon: <TruckIcon />, label: "Vehicles on Route", value: "10" },
                         { icon: <DocumentTextIcon />, label: "Total Items Shipped", value: "1,200" },
                     ],
-                    // The form is now shown on a separate view, triggered by the "Create Record" button.
                     activityComponent: <DispatchActivityTable currentUser={currentUser} />
-                };
-            
-            case 'ADMIN':
-            case 'MANAGER':
-                return {
-                    ...baseData,
-                    greeting: "Admin Dashboard",
-                    quote: "Oversee and manage the entire ERP system.",
-                    summaryCards: [
-                        { icon: <UsersIcon />, label: "Active Users", value: "12" },
-                        { icon: <ClockIcon />, label: "Pending Approvals", value: "3" },
-                        { icon: <ShieldCheckIcon />, label: "System Status", value: "Operational" },
-                        { icon: <ExclamationCircleIcon />, label: "Alerts", value: "0" },
-                    ],
-                    mainActions: [
-                        { label: "Manage Users", icon: <UserGroupIcon />, path: "/users" },
-                        { label: "System Settings", icon: <CogIcon />, path: "/settings" },
-                        { label: "View Reports", icon: <ChartBarIcon />, path: "/reports" },
-                    ]
                 };
 
             case 'GATE_ENTRY_OPERATOR':
@@ -97,7 +79,7 @@ export const UserDashboardView = () => {
                     activityComponent: <WeighingActivityTable currentUser={currentUser}/>
                 };
 
-            case 'QUALITY_OPERATOR': 
+            case 'QUALITY_CHECK_OPERATOR': 
                 return {
                     ...baseData,
                     greeting: "Quality Check Dashboard",
@@ -105,7 +87,6 @@ export const UserDashboardView = () => {
                     activityComponent: <QualityCheckActivityTable currentUser={currentUser}/>
                 };
 
-            case 'STORE_MANAGER':
             case 'BIN_OPERATOR':
                 return {
                     ...baseData,
@@ -115,10 +96,11 @@ export const UserDashboardView = () => {
                 };
 
             default:
+                // A fallback for any other user roles.
                 return {
                     ...baseData,
-                    mainActions: [],
-                    summaryCards: [],
+                    greeting: `Welcome, ${currentUser.name}`,
+                    quote: "This is your main dashboard.",
                 };
         }
     };
@@ -132,6 +114,7 @@ export const UserDashboardView = () => {
                 <p className="text-slate-500 mt-1">{data.quote}</p>
             </div>
 
+            {/* Render summary cards if they exist */}
             {data.summaryCards.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {data.summaryCards.map((card, index) => (
@@ -145,27 +128,7 @@ export const UserDashboardView = () => {
                 </div>
             )}
 
-            {data.mainActions.length > 0 && (
-                <div>
-                    <h2 className="text-lg font-semibold text-slate-700 mb-3">Quick Actions</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {data.mainActions.map((action, index) => (
-                            <a href={action.path} key={index} className="bg-white p-5 rounded-lg shadow-sm hover:shadow-md transition-all border border-slate-100 flex items-center justify-between group">
-                                <div className="flex items-center space-x-3">
-                                    <div className="bg-red-50 text-red-600 p-2 rounded-lg group-hover:bg-red-100 transition-colors">
-                                        {action.icon}
-                                    </div>
-                                    <span className="font-semibold text-slate-700">{action.label}</span>
-                                </div>
-                                <div className="text-slate-400 group-hover:text-red-500 transition-colors">
-                                    <ArrowRightIcon />
-                                </div>
-                            </a>
-                        ))}
-                    </div>
-                </div>
-            )}
-
+            {/* Render the main activity component (e.g., a table) if it exists */}
             {data.activityComponent && (
                 <div className="w-full">
                     {data.activityComponent}

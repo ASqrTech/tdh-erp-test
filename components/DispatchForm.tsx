@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { PROCESS_STAGES } from '../constants';
-import { FormFieldComponent } from './FormField'; // Corrected import, no alias
+import { FormFieldComponent } from './FormField';
 
-export const DispatchForm: React.FC = () => {
+interface DispatchFormProps {
+    onSubmissionSuccess: () => void;
+}
+
+export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess }) => {
     const { submitStageData } = useAuth();
     
     const stageConfig = PROCESS_STAGES.find(stage => stage.id === 'dispatch');
 
-    // Initialize form state dynamically from the stage configuration.
     const initialFormData = stageConfig?.formFields.reduce((acc, field) => {
         if (field.type !== 'heading') {
             acc[field.name] = '';
@@ -42,6 +45,12 @@ export const DispatchForm: React.FC = () => {
             await submitStageData('dispatch', formData);
             setSuccess('Dispatch record submitted successfully!');
             setFormData(initialFormData); // Reset form to initial state
+            
+            // Redirect after a short delay to allow the user to see the success message
+            setTimeout(() => {
+                onSubmissionSuccess();
+            }, 1000);
+
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred.');
         } finally {
@@ -49,7 +58,6 @@ export const DispatchForm: React.FC = () => {
         }
     };
 
-    // Calculate Net Weight from form data.
     const grossWeight = parseFloat(formData.gross_weight) || 0;
     const tareWeight = parseFloat(formData.tare_weight) || 0;
     const netWeight = grossWeight > 0 && tareWeight > 0 ? (grossWeight - tareWeight).toFixed(2) : 'N/A';
@@ -80,13 +88,13 @@ export const DispatchForm: React.FC = () => {
                     <p className="text-2xl font-bold text-gray-800 mt-2">{netWeight} Quintal</p>
                  </div>
 
-                {error && <div className="text-red-500 font-medium">Error: {error}</div>}
-                {success && <div className="text-green-500 font-medium">{success}</div>}
+                {error && <div className="text-red-500 font-medium mt-4">Error: {error}</div>}
+                {success && <div className="text-green-500 font-medium mt-4">{success}</div>}
 
                 <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-md hover:bg-red-700 disabled:bg-red-400 transition-colors duration-300"
+                    className="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-md hover:bg-red-700 disabled:bg-red-400 transition-colors duration-300 mt-6"
                 >
                     {isSubmitting ? 'Submitting...' : 'Submit Dispatch Record'}
                 </button>
