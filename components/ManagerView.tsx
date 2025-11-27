@@ -5,7 +5,6 @@ import type { Role, User } from '../types';
 import { ROLE_PERMISSIONS } from '../constants';
 import { EyeIcon, PencilIcon, TrashIcon, DownloadIcon } from './Icons';
 import { EmployeeDetailsModal } from './EmployeeDetailsModal';
-import { DispatchActivityTable } from './DispatchActivityTable'; // CORRECT: Import the component
 
 const initialNewEmployeeState = {
     name: '',
@@ -17,6 +16,11 @@ const initialNewEmployeeState = {
 
 export const ManagerView: React.FC = () => {
     const { currentUser, users, addUser, passwordRequests, approvePasswordReset, updateUserDetails, deactivateUser, logs } = useAuth();
+    
+    if (!currentUser) {
+        return null;
+    }
+
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newEmployee, setNewEmployee] = useState(initialNewEmployeeState);
     const [generatedCredentials, setGeneratedCredentials] = useState<{ pin: string; password: string } | null>(null);
@@ -188,11 +192,6 @@ export const ManagerView: React.FC = () => {
                 </div>
             </div>
 
-            {/* THE FINAL, CORRECT PLACEMENT */}
-            <div className="mt-8">
-                <DispatchActivityTable />
-            </div>
-
             {isAddModalOpen && (
                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md animate-fade-in max-h-[90vh] overflow-y-auto">
@@ -265,6 +264,7 @@ export const ManagerView: React.FC = () => {
                         <p className="text-slate-600 mb-6">Are you sure you want to deactivate <span className="font-semibold">{userToDeactivate.name}</span>? They will no longer be able to log in.</p>
                         <div className="flex justify-end space-x-2">
                             <button onClick={cancelDeactivate} className="px-4 py-2 bg-gray-200 rounded-md font-medium hover:bg-gray-300">Cancel</button>
+
                             <button onClick={confirmDeactivate} className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700">Deactivate</button>
                         </div>
                     </div>
