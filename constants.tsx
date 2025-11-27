@@ -70,7 +70,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'quality-check',
         name: 'Initial Quality Check',
-        responsibleRole: 'Quality Supervisor',
+        responsibleRole: 'Quality Operator',
         erpModule: 'Quality_Module',
         dependentOn: 'Weighing',
         output: 'Quality Report',
@@ -194,7 +194,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'quality_check_2',
         name: 'Final Quality Re-Check',
-        responsibleRole: 'Quality Supervisor',
+        responsibleRole: 'Quality Operator',
         erpModule: 'Quality_Module',
         dependentOn: 'Processing',
         output: 'Final QC Report',
@@ -214,7 +214,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'packing',
         name: 'Packing',
-        responsibleRole: 'Packaging Supervisor',
+        responsibleRole: 'Packaging Operator',
         erpModule: 'Packing_Module',
         dependentOn: 'Final Quality Re-Check',
         output: 'Packed Goods Record',
@@ -282,10 +282,10 @@ export const ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
     GATE_ENTRY_OPERATOR: ['arrival'],
     WEIGHING_OPERATOR: ['weighing'],
     CLEANING_OPERATOR: ['cleaning'],
-    QUALITY_SUPERVISOR: ['quality-check', 'quality_check_2'],
+    QUALITY_OPERATOR: ['quality-check', 'quality_check_2'],
     BIN_OPERATOR: ['bin_operation'],
     STORE_MANAGER: ['storage'],
     PLANT_OPERATOR: ['processing'],
-    PACKAGING_SUPERVISOR: ['packing'],
+    PACKAGING_OPERATOR: ['packing'],
     DISPATCH_OPERATOR: ['dispatch']
 };
