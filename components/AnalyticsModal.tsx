@@ -9,6 +9,7 @@ import { WeighingActivityTable } from './WeighingActivityTable';
 import { QualityCheckActivityTable } from './QualityCheckActivityTable';
 import { BinOperationActivityTable } from './BinOperationActivityTable';
 import { StorageActivityTable } from './StorageActivityTable';
+import { DispatchActivityTable } from './DispatchActivityTable'; // Import the new dispatch table
 
 // --- START: Chart Components (No changes here) ---
 interface BarChartProps {
@@ -213,10 +214,11 @@ const specificTableMap: Record<string, React.FC<{ currentUser: User }>> = {
   'quality-check': QualityCheckActivityTable,
   bin_operation: BinOperationActivityTable,
   storage: StorageActivityTable,
+  dispatch: DispatchActivityTable, // Add dispatch table to the map
 };
 
 export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ stage, onClose }) => {
-    const { logs, currentUser } = useAuth(); // Get currentUser from auth context
+    const { logs, currentUser } = useAuth();
 
     const stageLogs = useMemo(() => logs
         .filter(log => log.stageId === stage.id)
@@ -226,7 +228,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ stage, onClose }
     // This logic remains the same, it drives the KPI cards and charts
     const analyticsContent = useMemo(() => {
         const data = stageLogs
-            .map(log => typeof log.details === 'object' ? log.details.submittedData : null)
+            .map(log => log.details?.submittedData)
             .filter(Boolean);
             
         switch (stage.id) {
@@ -326,12 +328,12 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ stage, onClose }
                     ]
                 };
             }
+
             default:
                 return { kpis: [{ title: "Total Logs", value: stageLogs.length }], charts: [] };
         }
     }, [stageLogs, stage.id]);
     
-    // Determine which table to render
     const ActivityTable = specificTableMap[stage.id];
 
     return (
@@ -357,10 +359,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ stage, onClose }
                 
                 <div className="mt-6">
                     {ActivityTable && currentUser ? (
-                        // If a specific table exists, render it. It fetches its own data.
                         <ActivityTable currentUser={currentUser} />
                     ) : (
-                        // Otherwise, fall back to the generic table using the centrally fetched logs.
                         <ActivityLogTable logs={stageLogs} stageId={stage.id} />
                     )}
                 </div>
