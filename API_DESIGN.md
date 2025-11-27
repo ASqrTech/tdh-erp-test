@@ -111,7 +111,7 @@ Lab analysis of raw material samples.
 | `status`          | `VARCHAR(20)`    | `DEFAULT 'PENDING'`         | 'APPROVED', 'REJECTED'                    |
 | `note`            | `TEXT`           |                             |                                           |
 | `timestamp`       | `TIMESTAMP`      | `DEFAULT CURRENT_TIMESTAMP` |                                           |
-| `created_by`      | `VARCHAR(50)`    | `FK to users.id`            | Supervisor ID                             |
+| `created_by`      | `VARCHAR(50)`    | `FK to users.id`            | Operator ID                             |
 
 #### `bin_operations` (Stage: Bin Operation)
 Tracks movement of material into silos/bins.
@@ -178,7 +178,7 @@ Inventory tracking after cleaning/binning.
 | `remarks`         | `TEXT`           |                             |                                           |
 | `status`          | `VARCHAR(20)`    |                             | 'PASSED', 'FAILED'                        |
 | `timestamp`       | `TIMESTAMP`      | `DEFAULT CURRENT_TIMESTAMP` |                                           |
-| `created_by`      | `VARCHAR(50)`    | `FK to users.id`            | Supervisor ID                             |
+| `created_by`      | `VARCHAR(50)`    | `FK to users.id`            | Operator ID                             |
 
 #### `packing_logs` (Stage: Packing)
 | Column          | Type             | Constraints                 | Description                               |
@@ -188,7 +188,7 @@ Inventory tracking after cleaning/binning.
 | `bag_size_kg`   | `INTEGER`        |                             | 25, 50, 100                               |
 | `no_of_bags`    | `INTEGER`        |                             |                                           |
 | `timestamp`     | `TIMESTAMP`      | `DEFAULT CURRENT_TIMESTAMP` |                                           |
-| `created_by`    | `VARCHAR(50)`    | `FK to users.id`            | Supervisor ID                             |
+| `created_by`    | `VARCHAR(50)`    | `FK to users.id`            | Operator ID                             |
 
 #### `dispatch_logs` (Stage: Dispatch)
 | Column          | Type             | Constraints                 | Description                               |
@@ -198,7 +198,7 @@ Inventory tracking after cleaning/binning.
 | `destination`   | `VARCHAR(150)`   |                             |                                           |
 | `truck_no`      | `VARCHAR(20)`    |                             |                                           |
 | `timestamp`     | `TIMESTAMP`      | `DEFAULT CURRENT_TIMESTAMP` |                                           |
-| `created_by`    | `VARCHAR(50)`    | `FK to users.id`            | Logistics Officer ID                      |
+| `created_by`    | `VARCHAR(50)`    | `FK to users.id`            | Dispatch Operator ID                      |
 
 ---
 

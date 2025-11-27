@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
                 if (currentUser.role === 'WEIGHING_OPERATOR') {
                     return <WeighingForm />;
                 }
-                if (currentUser.role === 'QUALITY_SUPERVISOR') {
+                if (currentUser.role === 'QUALITY_OPERATOR') {
                     return <QualityCheckForm />;
                 }
                  if (currentUser.role === 'BIN_OPERATOR') {
@@ -93,7 +93,7 @@ const AppContent: React.FC = () => {
         }
     };
 
-    const isDataEntryRole = ['GATE_ENTRY_OPERATOR', 'WEIGHING_OPERATOR', 'QUALITY_SUPERVISOR', 'BIN_OPERATOR', 'STORE_MANAGER'].includes(currentUser.role);
+    const isDataEntryRole = ['GATE_ENTRY_OPERATOR', 'WEIGHING_OPERATOR', 'QUALITY_OPERATOR', 'BIN_OPERATOR', 'STORE_MANAGER'].includes(currentUser.role);
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans flex flex-col">

@@ -18,7 +18,7 @@ export const DashboardView: React.FC = () => {
         case 'WEIGHING_OPERATOR':
         case 'STORE_MANAGER':
         case 'BIN_OPERATOR':
-        case 'QUALITY_SUPERVISOR':
+        case 'QUALITY_OPERATOR':
         case 'ASSISTANT_MANAGER':
             return <UserDashboardView />;
         default:

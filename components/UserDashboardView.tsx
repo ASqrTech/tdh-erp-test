@@ -93,7 +93,7 @@ export const UserDashboardView = () => {
                     activityComponent: <WeighingActivityTable currentUser={currentUser}/>
                 };
 
-            case 'QUALITY_SUPERVISOR':
+            case 'QUALITY_OPERATOR':
                 return {
                     ...baseData,
                     greeting: "Quality Check Dashboard",

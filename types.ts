@@ -4,7 +4,7 @@ export type Role =
     | 'ASSISTANT_MANAGER'
     | 'GATE_ENTRY_OPERATOR'
     | 'WEIGHING_OPERATOR'
-    | 'QUALITY_SUPERVISOR'
+    | 'QUALITY_OPERATOR'
     | 'BIN_OPERATOR'
     | 'STORE_MANAGER';
 

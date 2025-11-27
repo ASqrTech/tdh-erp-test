@@ -3,13 +3,14 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from "firebase/auth";
 import { collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { auth, db, firebaseConfig } from '../firebase/firebase';
+import { PROCESS_STAGES } from '../constants'; // Import process stages
 import type { User, LogEntry } from '../types';
 
 // The shape of the authentication context
 interface AuthContextType {
     currentUser: User | null;
     users: User[];
-    gateRecords: LogEntry[];
+    logs: LogEntry[]; // Replaces gateRecords with a unified logs array
     passwordRequests: string[];
     loading: boolean;
     login: (email: string, pass: string, pin: string) => Promise<void>;
@@ -19,8 +20,7 @@ interface AuthContextType {
     approvePasswordReset: (userId: string) => Promise<void>;
     updateUserDetails: (updatedUser: User) => Promise<void>;
     deactivateUser: (userId: string) => Promise<void>;
-    submitStageData: (stageId: string, data: Record<string, any>) => Promise<void>; // Corrected signature
-    // Deprecated functions that will be maintained for now
+    submitStageData: (stageId: string, data: Record<string, any>) => Promise<void>;
     ensureHardcodedAdmin: () => Promise<void>;
     updateUserProfile: (updatedUser: User) => Promise<void>;
     verifyPin: (pin: string) => boolean;
@@ -28,15 +28,13 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// The provider component that wraps the app
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [users, setUsers] = useState<User[]>([]);
-    const [gateRecords, setGateRecords] = useState<LogEntry[]>([]);
+    const [logs, setLogs] = useState<LogEntry[]>([]); // CRITICAL FIX: Initialize state with empty array
     const [passwordRequests, setPasswordRequests] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Listener for authentication state changes
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, user => {
             if (user) {
@@ -44,39 +42,63 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
                     setCurrentUser(doc.exists() ? { id: user.uid, ...doc.data() } as User : null);
                     setLoading(false);
-                }, (error) => {
-                    console.error("Error fetching user document:", error);
+                }, (error: any) => {
+                    if (error.code !== 'permission-denied') {
+                        console.error("Error fetching user document:", error);
+                    }
                     setCurrentUser(null);
                     setLoading(false);
                 });
                 return () => unsubscribeSnapshot();
             } else {
                 setCurrentUser(null);
-                setUsers([]);
-                setPasswordRequests([]);
-                setGateRecords([]);
                 setLoading(false);
             }
         });
         return () => unsubscribeAuth();
     }, []);
 
-    // Set up listeners for collections only when a user is authenticated
+    // Set up all data listeners when a user is authenticated
     useEffect(() => {
-        if (!currentUser) return;
-    
+        if (!currentUser) {
+            setUsers([]);
+            setPasswordRequests([]);
+            setLogs([]);
+            return;
+        }
+
+        // --- Unified Log Fetching ---
+        const logCollections = PROCESS_STAGES.map(stage => `${stage.id}_records`);
+        const unsubscribers = logCollections.map((collectionName, index) => {
+            const stageId = PROCESS_STAGES[index].id;
+            const logQuery = collection(db, collectionName);
+
+            return onSnapshot(logQuery, snapshot => {
+                const newLogs = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const timestamp = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
+                    return {
+                        ...data,
+                        id: doc.id,
+                        stageId: stageId, // Add stageId for filtering
+                        timestamp: timestamp,
+                    } as LogEntry;
+                });
+
+                setLogs(prevLogs => {
+                    const otherLogs = prevLogs.filter(log => log.stageId !== stageId);
+                    return [...otherLogs, ...newLogs].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                });
+            }, (error) => console.error(`Error listening to ${collectionName}:`, error));
+        });
+
+        // --- User and Other Data Fetching ---
         const isManager = currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER';
         const usersQuery = isManager ? collection(db, "users") : query(collection(db, "users"), where("id", "==", currentUser.id));
-    
         const unsubscribeUsers = onSnapshot(usersQuery, snapshot => {
             setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as User[]);
         }, (error) => console.error("Error listening to users collection:", error));
 
-        const gateRecordsQuery = collection(db, "gate_records");
-        const unsubscribeGateRecords = onSnapshot(gateRecordsQuery, snapshot => {
-            setGateRecords(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LogEntry[]);
-        }, (error) => console.error("Error listening to gate_records collection:", error));
-    
         let unsubscribePasswordRequests = () => {};
         if (isManager) {
             unsubscribePasswordRequests = onSnapshot(collection(db, "passwordRequests"), snapshot => {
@@ -85,13 +107,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     
         return () => {
+            unsubscribers.forEach(unsub => unsub());
             unsubscribeUsers();
-            unsubscribeGateRecords();
             unsubscribePasswordRequests();
         };
     }, [currentUser]);
-
-    // --- Core Functions ---
 
     const login = async (email: string, pass: string, pin: string) => {
         const userCredential = await signInWithEmailAndPassword(auth, email, pass);
@@ -128,7 +148,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await updateDoc(doc(db, "users", userId), { status: 'INACTIVE' });
     };
 
-    // CORRECTED and more robust implementation
     const submitStageData = async (stageId: string, data: Record<string, any>) => {
         if (!currentUser) throw new Error("No authenticated user found.");
         if (!stageId || typeof stageId !== 'string') {
@@ -146,8 +165,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             details: data,
         });
     };
-
-    // --- Password Reset Flow ---
 
     const requestPasswordReset = async (email: string) => {
         const userQuery = query(collection(db, "users"), where("email", "==", email));
@@ -167,7 +184,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await deleteDoc(doc(db, "passwordRequests", userId));
     };
 
-    // --- Deprecated / Placeholder Functions ---
     const ensureHardcodedAdmin = async () => Promise.resolve();
     const updateUserProfile = async (updatedUser: User) => updateUserDetails(updatedUser);
     const verifyPin = (pin: string): boolean => {
@@ -176,7 +192,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const value = { 
-        currentUser, users, gateRecords, passwordRequests, loading, 
+        currentUser, users, logs, passwordRequests, loading, 
         login, logout, addUser, requestPasswordReset, approvePasswordReset,
         updateUserDetails, deactivateUser, submitStageData,
         ensureHardcodedAdmin, updateUserProfile, verifyPin

@@ -18,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, currentVi
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const isManager = managerRoles.includes(currentUser.role);
-    const isDataEntryRole = ['GATE_ENTRY_OPERATOR', 'WEIGHING_OPERATOR', 'QUALITY_SUPERVISOR', 'BIN_OPERATOR'].includes(currentUser.role);
+    const isDataEntryRole = ['GATE_ENTRY_OPERATOR', 'WEIGHING_OPERATOR', 'QUALITY_OPERATOR', 'BIN_OPERATOR'].includes(currentUser.role);
     
     const processViewLabel = isDataEntryRole ? 'Create Record' : 'Process View';
     const mobileProcessViewLabel = isDataEntryRole ? 'Create Record' : 'Process';
