@@ -5,6 +5,7 @@ import type { Role, User } from '../types';
 import { ROLE_PERMISSIONS } from '../constants';
 import { EyeIcon, PencilIcon, TrashIcon, DownloadIcon } from './Icons';
 import { EmployeeDetailsModal } from './EmployeeDetailsModal';
+import { DispatchActivityTable } from './DispatchActivityTable'; // CORRECT: Import the component
 
 const initialNewEmployeeState = {
     name: '',
@@ -185,6 +186,11 @@ export const ManagerView: React.FC = () => {
                          )}
                      </div>
                 </div>
+            </div>
+
+            {/* THE FINAL, CORRECT PLACEMENT */}
+            <div className="mt-8">
+                <DispatchActivityTable />
             </div>
 
             {isAddModalOpen && (

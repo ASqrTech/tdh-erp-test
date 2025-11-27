@@ -1,15 +1,15 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Role } from '../types'; 
 import { 
-    TruckIcon, ScaleIcon, ArchiveBoxIcon, CubeIcon, 
-    ClipboardListIcon, ClockIcon, ExclamationCircleIcon, CogIcon, ShieldCheckIcon, 
-    UsersIcon, UserGroupIcon, ChartBarIcon, DocumentTextIcon, ArrowRightIcon
+    TruckIcon, ScaleIcon, ArchiveBoxIcon, 
+    ClockIcon, ExclamationCircleIcon, CogIcon, ShieldCheckIcon, 
+    UsersIcon, UserGroupIcon, ChartBarIcon, DocumentTextIcon, ArrowRightIcon, PaperAirplaneIcon
 } from './Icons';
 import { WeighingActivityTable } from './WeighingActivityTable';
 import { GateEntryActivityTable } from './GateEntryActivityTable';
 import { StorageActivityTable } from './StorageActivityTable';
 import { QualityCheckActivityTable } from './QualityCheckActivityTable';
+import { DispatchActivityTable } from './DispatchActivityTable';
 
 const StatCard = ({ icon, label, value }: { icon: JSX.Element, label: string, value: string | number }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm flex items-center space-x-3 border border-slate-100">
@@ -46,6 +46,22 @@ export const UserDashboardView = () => {
         };
 
         switch (currentUser.role) {
+
+            case 'DISPATCH_OPERATOR':
+                return {
+                    ...baseData,
+                    greeting: "Dispatch Console",
+                    quote: "Manage and record all outbound shipments.",
+                    summaryCards: [
+                        { icon: <PaperAirplaneIcon />, label: "Today's Dispatches", value: "15" },
+                        { icon: <ClockIcon />, label: "Pending Shipments", value: "2" },
+                        { icon: <TruckIcon />, label: "Vehicles on Route", value: "10" },
+                        { icon: <DocumentTextIcon />, label: "Total Items Shipped", value: "1,200" },
+                    ],
+                    // The form is now shown on a separate view, triggered by the "Create Record" button.
+                    activityComponent: <DispatchActivityTable currentUser={currentUser} />
+                };
+            
             case 'ADMIN':
             case 'MANAGER':
                 return {
@@ -70,12 +86,6 @@ export const UserDashboardView = () => {
                     ...baseData,
                     greeting: "Gate Entry Console",
                     quote: "Securing and managing all entry and exit points.",
-                    summaryCards: [
-                        { icon: <TruckIcon />, label: "Today's Entries", value: "42" },
-                        { icon: <TruckIcon />, label: "Today's Exits", value: "38" },
-                        { icon: <ClipboardListIcon />, label: "Pending Inward", value: "4" },
-                        { icon: <ClockIcon />, label: "Avg. Turnaround", value: "25m" },
-                    ],
                     activityComponent: <GateEntryActivityTable currentUser={currentUser}/>
                 };
 
@@ -84,26 +94,14 @@ export const UserDashboardView = () => {
                     ...baseData,
                     greeting: "Weighing Operator Console",
                     quote: "Ensuring accurate and efficient weight recording.",
-                    summaryCards: [
-                        { icon: <ScaleIcon />, label: "Total Weigh-ins", value: "80" },
-                        { icon: <DocumentTextIcon />, label: "Tare Registered", value: "65" },
-                        { icon: <TruckIcon />, label: "Gross Weighted", value: "15" },
-                        { icon: <ClockIcon />, label: "Avg. Weight Time", value: "8m" },
-                    ],
                     activityComponent: <WeighingActivityTable currentUser={currentUser}/>
                 };
 
-            case 'QUALITY_OPERATOR':
+            case 'QUALITY_SUPERVISOR': 
                 return {
                     ...baseData,
                     greeting: "Quality Check Dashboard",
                     quote: "Ensuring all materials meet the required standards.",
-                    summaryCards: [
-                        { icon: <ShieldCheckIcon />, label: "Inspections Today", value: "25" },
-                        { icon: <ClipboardListIcon />, label: "Pending Tests", value: "5" },
-                        { icon: <ExclamationCircleIcon />, label: "Rejections", value: "1" },
-                        { icon: <ChartBarIcon />, label: "Approval Rate", value: "96%" },
-                    ],
                     activityComponent: <QualityCheckActivityTable currentUser={currentUser}/>
                 };
 
@@ -113,12 +111,6 @@ export const UserDashboardView = () => {
                     ...baseData,
                     greeting: "Storage Management",
                     quote: "Oversee all stored materials.",
-                    summaryCards: [
-                        { icon: <ArchiveBoxIcon />, label: "Total Stored", value: "4500 MT" },
-                        { icon: <CubeIcon />, label: "Stock Value", value: "₹ 1.2 Cr" },
-                        { icon: <ClipboardListIcon />, label: "Stockouts", value: "0" },
-                        { icon: <ClockIcon />, label: "Avg. Storage Time", value: "48h" },
-                    ],
                     activityComponent: <StorageActivityTable currentUser={currentUser}/>
                 };
 
@@ -145,7 +137,7 @@ export const UserDashboardView = () => {
                     {data.summaryCards.map((card, index) => (
                         <StatCard 
                             key={index} 
-                            icon={card.icon} 
+                            icon={card.icon}
                             label={card.label} 
                             value={card.value} 
                         />
@@ -176,7 +168,6 @@ export const UserDashboardView = () => {
 
             {data.activityComponent && (
                 <div className="w-full">
-                    {/* <h2 className="text-lg font-semibold text-slate-700 mb-3">Recent Activity</h2> */}
                     {data.activityComponent}
                 </div>
             )}

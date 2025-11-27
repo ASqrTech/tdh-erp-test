@@ -56,8 +56,8 @@ const AppContent: React.FC = () => {
     };
 
     if (!currentUser) {
-        return <LoginScreen />;
-    }
+            return <LoginScreen />;
+                }
 
     const visibleStages = getVisibleStages(currentUser.role);
     const isManager = managerRoles.includes(currentUser.role);

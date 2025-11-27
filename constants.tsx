@@ -70,15 +70,15 @@ export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'quality-check',
         name: 'Initial Quality Check',
-        responsibleRole: 'Quality Operator',
+        responsibleRole: 'Quality Supervisor',
         erpModule: 'Quality_Module',
         dependentOn: 'Weighing',
         output: 'Quality Report',
         description: 'A sample is drawn for quality inspection. The batch is either approved for the next stage or rejected.',
         color: { 
-            bg: 'bg-red-100',
-            text: 'text-red-800',
-            border: 'border-red-300'
+            bg: 'bg-purple-100',
+            text: 'text-purple-800',
+            border: 'border-purple-300'
         },
         icon: <BeakerIcon />,
         formFields: [
@@ -194,7 +194,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'quality_check_2',
         name: 'Final Quality Re-Check',
-        responsibleRole: 'Quality Operator',
+        responsibleRole: 'Quality Supervisor',
         erpModule: 'Quality_Module',
         dependentOn: 'Processing',
         output: 'Final QC Report',
@@ -214,7 +214,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'packing',
         name: 'Packing',
-        responsibleRole: 'Packaging Operator',
+        responsibleRole: 'Packaging Supervisor',
         erpModule: 'Packing_Module',
         dependentOn: 'Final Quality Re-Check',
         output: 'Packed Goods Record',
@@ -246,9 +246,31 @@ export const PROCESS_STAGES: ProcessStage[] = [
         },
         icon: <PaperAirplaneIcon />,
         formFields: [
-            { name: 'dispatch_id', label: 'Dispatch ID', type: 'text', placeholder: 'e.g., DISP-001' },
-            { name: 'destination', label: 'Destination', type: 'text', placeholder: 'e.g., Hyderabad Warehouse' },
-            { name: 'truck_no', label: 'Truck No', type: 'text', placeholder: 'e.g., TS09AB1234' },
+            { name: 'dispatch_details_heading', label: 'Dispatch Details', type: 'heading' },
+            { name: 'vehicle_number', label: 'Vehicle Number', type: 'text', placeholder: 'e.g., TS09AB1234' },
+            { name: 'destination', label: 'Destination', type: 'text', placeholder: 'e.g., Hyderabad' },
+            { name: 'client_name', label: 'Client Name', type: 'text', placeholder: 'e.g., Global Exports Inc.' },
+            { name: 'no_of_bags', label: 'No of Bags', type: 'number', placeholder: 'e.g., 200' },
+
+            { name: 'item_list_heading', label: 'Item Details', type: 'heading' },
+            { name: 'item_1_name', label: 'Item 1 Name', type: 'text', placeholder: 'e.g., Toor Dal' },
+            { name: 'item_1_quantity', label: 'Item 1 Quantity (Qtl)', type: 'number', placeholder: '0' },
+            { name: 'item_2_name', label: 'Item 2 Name', type: 'text', placeholder: 'e.g., Moong Dal' },
+            { name: 'item_2_quantity', label: 'Item 2 Quantity (Qtl)', type: 'number', placeholder: '0' },
+            { name: 'item_3_name', label: 'Item 3 Name', type: 'text' },
+            { name: 'item_3_quantity', label: 'Item 3 Quantity (Qtl)', type: 'number' },
+            { name: 'item_4_name', label: 'Item 4 Name', type: 'text' },
+            { name: 'item_4_quantity', label: 'Item 4 Quantity (Qtl)', type: 'number' },
+            { name: 'item_5_name', label: 'Item 5 Name', type: 'text' },
+            { name: 'item_5_quantity', label: 'Item 5 Quantity (Qtl)', type: 'number' },
+            { name: 'item_6_name', label: 'Item 6 Name', type: 'text' },
+            { name: 'item_6_quantity', label: 'Item 6 Quantity (Qtl)', type: 'number' },
+
+            { name: 'weight_heading', label: 'Weight Details', type: 'heading' },
+            { name: 'gross_weight', label: 'Gross Weight (Qtl)', type: 'number', placeholder: 'Weight of vehicle with goods' },
+            { name: 'tare_weight', label: 'Tare Weight (Qtl)', type: 'number', placeholder: 'Weight of empty vehicle' },
+            
+            { name: 'note', label: 'Notes / Remarks', type: 'textarea' },
         ],
     }
 ];
@@ -260,10 +282,10 @@ export const ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
     GATE_ENTRY_OPERATOR: ['arrival'],
     WEIGHING_OPERATOR: ['weighing'],
     CLEANING_OPERATOR: ['cleaning'],
-    QUALITY_OPERATOR: ['quality-check', 'quality_check_2'],
+    QUALITY_SUPERVISOR: ['quality-check', 'quality_check_2'],
     BIN_OPERATOR: ['bin_operation'],
     STORE_MANAGER: ['storage'],
     PLANT_OPERATOR: ['processing'],
-    PACKAGING_OPERATOR: ['packing'],
+    PACKAGING_SUPERVISOR: ['packing'],
     DISPATCH_OPERATOR: ['dispatch']
 };

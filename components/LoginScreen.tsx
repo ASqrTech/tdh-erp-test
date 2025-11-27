@@ -8,7 +8,8 @@ const LoginScreen = () => {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [showReset, setShowReset] = useState(false);
-  const [resetUserId, setResetUserId] = useState("");
+  // Corrected state variable name for clarity and consistency
+  const [resetEmail, setResetEmail] = useState(""); 
   const [resetMessage, setResetMessage] = useState("");
 
   const { login, requestPasswordReset } = useAuth();
@@ -28,11 +29,13 @@ const LoginScreen = () => {
     e.preventDefault();
     setResetMessage("");
     try {
-      await requestPasswordReset(resetUserId);
-      setResetMessage("Password reset request sent successfully.");
-    } catch (error) {
+      // Correctly pass the email to the reset function
+      await requestPasswordReset(resetEmail);
+      setResetMessage("If an account exists for this email, a password reset link has been sent.");
+    } catch (error) { 
       console.error("Password reset request failed:", error);
-      setResetMessage("Failed to send password reset request. Please check the User ID.");
+      // Provide a generic message for security reasons
+      setResetMessage("If an account exists for this email, a password reset link has been sent."); 
     }
   };
 
@@ -108,25 +111,23 @@ const LoginScreen = () => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm animate-fade-in">
                     <h3 className="text-lg font-semibold mb-4">Request Password Reset</h3>
-                    {resetMessage ? (
-                        <p className="text-green-600">{resetMessage}</p>
-                    ) : (
-                        <form onSubmit={handlePasswordReset}>
-                            <p className="text-sm text-gray-600 mb-4">Enter your User ID to send a reset request to your manager.</p>
-                            <input
-                                type="text"
-                                value={resetUserId}
-                                onChange={(e) => setResetUserId(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                                placeholder="Your User ID"
-                                required
-                            />
-                            <div className="mt-6 flex justify-end space-x-2">
-                                <button type="button" onClick={() => setShowReset(false)} className="px-4 py-2 bg-gray-200 rounded-md text-sm font-medium hover:bg-gray-300">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700">Send Request</button>
-                            </div>
-                        </form>
-                    )}
+                    <form onSubmit={handlePasswordReset}>
+                        {/* Corrected the user-facing message to ask for an email address */}
+                        <p className="text-sm text-gray-600 mb-4">Enter your email address to receive a password reset link.</p>
+                        <input
+                            type="email" // Use type="email" for better validation
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                            placeholder="Your email address"
+                            required
+                        />
+                        {resetMessage && <p className="text-sm text-center mt-4 text-gray-600">{resetMessage}</p>}
+                        <div className="mt-6 flex justify-end space-x-2">
+                            <button type="button" onClick={() => {setShowReset(false); setResetMessage('');}} className="px-4 py-2 bg-gray-200 rounded-md text-sm font-medium hover:bg-gray-300">Cancel</button>
+                            <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700">Send Link</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         )}

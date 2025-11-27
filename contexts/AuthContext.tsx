@@ -31,7 +31,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [users, setUsers] = useState<User[]>([]);
-    const [logs, setLogs] = useState<LogEntry[]>([]); // CRITICAL FIX: Initialize state with empty array
+    const [logs, setLogs] = useState<LogEntry[]>([]);
     const [passwordRequests, setPasswordRequests] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -67,11 +67,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return;
         }
 
-        // --- Unified Log Fetching ---
-        const logCollections = PROCESS_STAGES.map(stage => `${stage.id}_records`);
-        const unsubscribers = logCollections.map((collectionName, index) => {
-            const stageId = PROCESS_STAGES[index].id;
-            const logQuery = collection(db, collectionName);
+        const logCollections = PROCESS_STAGES.map(stage => stage.id);
+        const unsubscribers = logCollections.map(stageId => {
+            const logQuery = collection(db, `${stageId}_records`);
 
             return onSnapshot(logQuery, snapshot => {
                 const newLogs = snapshot.docs.map(doc => {
@@ -80,19 +78,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     return {
                         ...data,
                         id: doc.id,
-                        stageId: stageId, // Add stageId for filtering
+                        stageId: stageId,
                         timestamp: timestamp,
                     } as LogEntry;
                 });
 
                 setLogs(prevLogs => {
                     const otherLogs = prevLogs.filter(log => log.stageId !== stageId);
-                    return [...otherLogs, ...newLogs].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                    const updatedLogs = [...otherLogs, ...newLogs];
+                    return updatedLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
                 });
-            }, (error) => console.error(`Error listening to ${collectionName}:`, error));
+            }, (error) => console.error(`Error listening to ${stageId}_records:`, error));
         });
 
-        // --- User and Other Data Fetching ---
         const isManager = currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER';
         const usersQuery = isManager ? collection(db, "users") : query(collection(db, "users"), where("id", "==", currentUser.id));
         const unsubscribeUsers = onSnapshot(usersQuery, snapshot => {
@@ -157,12 +155,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
         const collectionName = `${stageId}_records`;
     
+        // THE DIAGNOSTIC FIX: Inject the stageId directly into the details object.
+        // This creates a redundant but reliable source of truth within the database itself.
+        const dataToSubmit = {
+            ...data,
+            stageId: stageId 
+        };
+
         await addDoc(collection(db, collectionName), {
             timestamp: new Date(),
             userId: currentUser.id,
             userName: currentUser.name,
-            action: `${stageId.toUpperCase()}_RECORDED`,
-            details: data,
+            details: dataToSubmit, // The details object now contains its own stageId.
         });
     };
 

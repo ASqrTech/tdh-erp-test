@@ -1,0 +1,194 @@
+import React, { useState, useMemo } from 'react';
+import { useAuth } from '../contexts/AuthContext'; // Using the central auth context is the correct pattern.
+import type { LogEntry } from '../types';
+import { DispatchDetailsModal } from './DispatchDetailsModal';
+
+type TimeFilter = '24h' | 'week' | 'month' | 'custom';
+
+export const DispatchActivityTable: React.FC = () => {
+    // All data is provided by the central 'logs' array from the AuthContext.
+    const { logs } = useAuth();
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
+    const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
+
+    // Helper component for reusable filter buttons (same style / behavior as in weighing table)
+    const FilterButton: React.FC<{ filter: TimeFilter; label: string }> = ({ filter, label }) => (
+        <button
+            onClick={() => setTimeFilter(filter)}
+            className={`flex-1 text-center px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${timeFilter === filter ? 'bg-red-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+        >
+            {label}
+        </button>
+    );
+
+    const filteredRecords = useMemo(() => {
+        // The logic is simple: filter the unified logs for dispatch records, then apply UI filters.
+        const dispatchRecords = (logs || []).filter(log => log.stageId === 'dispatch');
+
+        return (dispatchRecords || []).filter(record => {
+            if (!record.timestamp) return false;
+
+            const recordDate = new Date(record.timestamp);
+            let timeMatch = false;
+
+            switch (timeFilter) {
+                case '24h':
+                    timeMatch = (Date.now() - recordDate.getTime()) < 24 * 60 * 60 * 1000;
+                    break;
+                case 'week':
+                    timeMatch = (Date.now() - recordDate.getTime()) < 7 * 24 * 60 * 60 * 1000;
+                    break;
+                case 'month':
+                    // Use last 30 days for "This Month" to mimic weigh table behaviour
+                    timeMatch = (Date.now() - recordDate.getTime()) < 30 * 24 * 60 * 60 * 1000;
+                    break;
+                case 'custom':
+                    if (!customStartDate && !customEndDate) {
+                        timeMatch = true;
+                        break;
+                    }
+                    const start = customStartDate ? new Date(`${customStartDate}T00:00:00`) : null;
+                    const end = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : null;
+                    if (start && end) timeMatch = recordDate >= start && recordDate <= end;
+                    else if (start) timeMatch = recordDate >= start;
+                    else if (end) timeMatch = recordDate <= end;
+                    break;
+                default:
+                    timeMatch = true;
+                    break;
+            }
+
+            if (!timeMatch) return false;
+
+            if (searchTerm.trim() === '') return true;
+            const lowercasedSearch = searchTerm.toLowerCase();
+            const details = (record.details || {}) as Record<string, any>;
+
+            return (
+                (details.vehicle_number?.toString().toLowerCase().includes(lowercasedSearch)) ||
+                (details.client_name?.toString().toLowerCase().includes(lowercasedSearch)) ||
+                (details.destination?.toString().toLowerCase().includes(lowercasedSearch)) ||
+                (details.ticket_number?.toString().toLowerCase().includes(lowercasedSearch))
+            );
+        });
+    }, [logs, searchTerm, timeFilter, customStartDate, customEndDate]);
+
+    const formatTimestamp = (isoString: string) => {
+        try {
+            return new Date(isoString).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+        } catch {
+            return isoString;
+        }
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md w-full">
+            <h3 className="text-xl font-semibold text-slate-700 mb-4">Recent Dispatch Activity</h3>
+
+            <div className="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0">
+                <div className="relative w-full md:max-w-xs">
+                    <input
+                        type="text"
+                        placeholder="Search by vehicle, client, destination, ticket..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:flex gap-2 p-1 bg-slate-100 rounded-lg w-full md:w-auto">
+                    <FilterButton filter="24h" label="Last 24h" />
+                    <FilterButton filter="week" label="This Week" />
+                    <FilterButton filter="month" label="This Month" />
+                    <FilterButton filter="custom" label="Custom" />
+                </div>
+            </div>
+
+            {timeFilter === 'custom' && (
+                <div className="flex flex-col sm:flex-row items-center gap-2 mb-4 p-2 bg-slate-50 rounded-lg justify-center">
+                    <label htmlFor="start-date" className="text-sm font-medium text-slate-600">From:</label>
+                    <input
+                        id="start-date"
+                        type="date"
+                        value={customStartDate}
+                        onChange={e => setCustomStartDate(e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
+                    />
+                    <label htmlFor="end-date" className="text-sm font-medium text-slate-600">To:</label>
+                    <input
+                        id="end-date"
+                        type="date"
+                        value={customEndDate}
+                        onChange={e => setCustomEndDate(e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
+                    />
+                    <button
+                        onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
+                        className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-300 transition"
+                    >
+                        Clear
+                    </button>
+                </div>
+            )}
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+                        <tr>
+                            <th className="p-3">Timestamp</th>
+                            <th className="p-3">Vehicle No.</th>
+                            <th className="p-3">Client Name</th>
+                            <th className="p-3">Destination</th>
+                            <th className="p-3">Net Weight (Qtl)</th>
+                            <th className="p-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredRecords.length > 0 ? filteredRecords.map(record => {
+                            const details = (record.details || {}) as Record<string, any>;
+                            const grossWeight = parseFloat(details.gross_weight) || 0;
+                            const tareWeight = parseFloat(details.tare_weight) || 0;
+                            const netWeight = (grossWeight > 0 && tareWeight > 0) ? ((grossWeight - tareWeight).toFixed(2)) : '-';
+
+                            return (
+                                <tr key={record.id} className="border-b hover:bg-slate-50">
+                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
+                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
+                                    <td className="p-3 text-slate-600">{details.client_name}</td>
+                                    <td className="p-3 text-slate-600">{details.destination}</td>
+                                    <td className="p-3 font-bold text-slate-800">{netWeight}</td>
+                                    <td className="p-3">
+                                        <button
+                                            onClick={() => setSelectedRecord(record)}
+                                            className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full hover:bg-red-200 transition"
+                                        >
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        }) : (
+                            <tr>
+                                <td colSpan={6} className="text-center p-8 text-slate-500">No entries found for the selected criteria.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {selectedRecord && (
+                <DispatchDetailsModal
+                    log={selectedRecord}
+                    onClose={() => setSelectedRecord(null)}
+                />
+            )}
+        </div>
+    );
+};
