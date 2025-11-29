@@ -111,15 +111,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
     }, [currentUser]);
 
-    const login = async (email: string, pass: string, pin: string) => {
-        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-        const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
-        
-        if (!userDoc.exists() || userDoc.data().pin !== pin) {
-            await signOut(auth);
+    const login = async (identifier: string, pass: string, pin: string) => {
+    let userEmail = identifier;
+
+    // Check if the identifier is a username (i.e., not an email)
+    if (!identifier.includes('@')) {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("name", "==", identifier));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
             throw new Error("Invalid credentials or PIN.");
         }
-    };
+
+        const userData = querySnapshot.docs[0].data() as User;
+        if (!userData.email) {
+            throw new Error("User email not found for the given identifier.");
+        }
+        userEmail = userData.email;
+    }
+
+    const userCredential = await signInWithEmailAndPassword(auth, userEmail, pass);
+    const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+
+    if (!userDoc.exists() || userDoc.data().pin !== pin) {
+        await signOut(auth);
+        throw new Error("Invalid credentials or PIN.");
+    }
+};
 
     const logout = () => signOut(auth);
 

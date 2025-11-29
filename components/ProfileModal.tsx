@@ -2,15 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from './Modal';
-import { UserIcon } from './Icons';
 import type { User } from '../types';
 
 interface ProfileModalProps {
+    currentUser: User;
     onClose: () => void;
 }
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
-    const { currentUser, updateUserProfile } = useAuth();
+export const ProfileModal: React.FC<ProfileModalProps> = ({ currentUser, onClose }) => {
+    const { updateUserProfile } = useAuth();
     const [userData, setUserData] = useState<Partial<User>>(currentUser || {});
     const [isSaved, setIsSaved] = useState(false);
 
@@ -24,19 +24,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (currentUser) {
-            updateUserProfile(userData as User);
-            setIsSaved(true);
-            setTimeout(() => {
-                setIsSaved(false);
-                onClose();
-            }, 1500);
-        }
+        updateUserProfile(userData as User);
+        setIsSaved(true);
+        setTimeout(() => {
+            setIsSaved(false);
+            onClose();
+        }, 1500);
     };
     
     const inputClasses = "mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500";
     const labelClasses = "block text-sm font-medium text-slate-600";
-
 
     return (
         <Modal isOpen={true} onClose={onClose} title={`${currentUser?.name} Profile`}>

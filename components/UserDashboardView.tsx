@@ -79,7 +79,7 @@ export const UserDashboardView: React.FC = () => {
                     activityComponent: <WeighingActivityTable currentUser={currentUser}/>
                 };
 
-            case 'QUALITY_CHECK_OPERATOR': 
+            case 'QUALITY_OPERATOR': 
                 return {
                     ...baseData,
                     greeting: "Quality Check Dashboard",
