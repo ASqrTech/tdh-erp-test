@@ -1,194 +1,334 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { PROCESS_STAGES } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { FormFieldComponent } from './FormField';
 import type { FormField } from '../types';
 
-const generateSerialNumber = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
+const generateSerialNumber = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
 const inFields: FormField[] = [
-    { name: 'vehicle_number', label: 'Vehicle Number', type: 'text', placeholder: 'e.g., AP00XX0000' },
-    { name: 'driver_name', label: 'Driver Name', type: 'text', placeholder: 'e.g., John Doe' },
-    { name: 'phone_number', label: 'Phone Number', type: 'tel', placeholder: 'e.g., 9876543210' },
-    { name: 'from_broker', label: 'From Broker', type: 'text', placeholder: 'e.g., ABC' },
-    { name: 'to_location', label: 'To', type: 'text', placeholder: 'e.g., Tenali' },
-    { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
+  { name: 'vehicle_number', label: 'Vehicle Number', type: 'text', placeholder: 'e.g., AP00XX0000' },
+  { name: 'driver_name', label: 'Driver Name', type: 'text', placeholder: 'e.g., John Doe' },
+  { name: 'phone_number', label: 'Phone Number', type: 'tel', placeholder: 'e.g., 9876543210' },
+  { name: 'from_broker', label: 'From Broker', type: 'text', placeholder: 'e.g., ABC' },
+  { name: 'to_location', label: 'To', type: 'text', placeholder: 'e.g., Tenali' },
+  { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
 ];
 
 const outFields: FormField[] = [
-    { name: 'serial_number', label: 'Serial Number', type: 'text', placeholder: 'Enter 6-digit S/N from IN-slip' },
-    { name: 'vehicle_number', label: 'Vehicle Number', type: 'text', placeholder: 'e.g., AP00XX0000' },
-    { name: 'driver_name', label: 'Driver Name', type: 'text', placeholder: 'e.g., John Doe' },
-    { name: 'phone_number', label: 'Phone No', type: 'tel', placeholder: 'e.g., 9876543210' },
-    { name: 'quantity', label: 'QTY', type: 'number', placeholder: 'e.g., 250' },
-    { name: 'from_location', label: 'From', type: 'text', placeholder: 'e.g., Tenal' },
-    { name: 'broker_name', label: 'Broker Name', type: 'text', placeholder: 'e.g., XYZ' },
-    { name: 'broker_phone', label: 'Broker Phone No', type: 'tel', placeholder: 'e.g., 9876543211' },
-    { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
+  { name: 'serial_number', label: 'Serial Number', type: 'text', placeholder: 'Enter 6-digit S/N from IN-slip' },
+  { name: 'vehicle_number', label: 'Vehicle Number', type: 'text', placeholder: 'e.g., AP00XX0000' },
+  { name: 'driver_name', label: 'Driver Name', type: 'text', placeholder: 'e.g., John Doe' },
+  { name: 'phone_number', label: 'Phone No', type: 'tel', placeholder: 'e.g., 9876543210' },
+  { name: 'quantity', label: 'QTY', type: 'number', placeholder: 'e.g., 250' },
+  { name: 'from_location', label: 'From', type: 'text', placeholder: 'e.g., Tenal' },
+  { name: 'broker_name', label: 'Broker Name', type: 'text', placeholder: 'e.g., XYZ' },
+  { name: 'broker_phone', label: 'Broker Phone No', type: 'tel', placeholder: 'e.g., 9876543211' },
+  { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
 ];
 
-
 export const GateEntryForm: React.FC = () => {
-    const { currentUser, verifyPin, submitStageData } = useAuth();
-    const formRef = useRef<HTMLFormElement>(null);
-    const [mode, setMode] = useState<'in' | 'out'>('in');
-    const [serialNumber, setSerialNumber] = useState('');
-    const [timestamp, setTimestamp] = useState(new Date().toLocaleString());
-    const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-    const [pin, setPin] = useState('');
-    const [pinError, setPinError] = useState('');
-    const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const { currentUser, verifyPin, submitStageData } = useAuth();
+  const formRef = useRef<HTMLFormElement>(null);
 
-    const arrivalStage = PROCESS_STAGES.find(stage => stage.id === 'arrival');
+  const [mode, setMode] = useState<'in' | 'out'>('in');
+  const [serialNumber, setSerialNumber] = useState<string>(generateSerialNumber());
+  const [timestamp, setTimestamp] = useState<string>(new Date().toLocaleString());
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (mode === 'in') {
-            setSerialNumber(generateSerialNumber());
-        } else {
-            setSerialNumber('');
-        }
-    }, [mode]);
+  // Central controlled form state
+  const [formState, setFormState] = useState<Record<string, any>>({});
 
-    useEffect(() => {
-        const timer = setInterval(() => setTimestamp(new Date().toLocaleString()), 1000);
-        return () => clearInterval(timer);
-    }, []);
+  // NOTE: arrivalStage is an object from PROCESS_STAGES — keep it here for label/ui checks,
+  // but when calling submitStageData we must pass a string id (arrivalStage.id).
+  const arrivalStage = PROCESS_STAGES.find(stage => stage.id === 'arrival');
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        const formData = new FormData(e.currentTarget);
-        const data: Record<string, any> = Object.fromEntries(formData.entries());
-
-        data.gate_mode = mode;
-        data.timestamp = new Date().toISOString();
-        if (mode === 'in') {
-            data.serial_number = serialNumber;
-        }
-        
-        setSubmittedData(data);
-        setIsSubmitting(false);
-        setIsPinModalOpen(true);
-    };
-
-    const handlePinConfirm = () => {
-        if (!currentUser || !submittedData) return;
-        
-        if (verifyPin(pin)) {
-            submitStageData(arrivalStage!, submittedData);
-            handleCloseModal();
-            setSubmittedData(null);
-            formRef.current?.reset();
-        } else {
-            setPinError('Incorrect PIN. Please try again.');
-            setPin('');
-        }
-    };
-    
-    const handleCloseModal = () => {
-        setIsPinModalOpen(false);
-        setPin('');
-        setPinError('');
-    };
-
-    const renderFields = (fields: FormField[]) => {
-        return fields.map(field => <FormFieldComponent key={field.name} field={field} isRequired={false} />);
-    };
-
-    const AutoGeneratedField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-            <input
-                type="text"
-                value={value}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-slate-100 text-slate-500 cursor-not-allowed"
-            />
-        </div>
-    );
-
-    if (!arrivalStage || !currentUser) {
-        return <p className="text-center text-red-500">Error: Component failed to load. User or configuration missing.</p>;
+  useEffect(() => {
+    // when mode changes, reset or populate serial accordingly
+    if (mode === 'in') {
+      const sn = generateSerialNumber();
+      setSerialNumber(sn);
+      // clear serial_number in state (we show generated)
+      setFormState(prev => ({ ...prev, serial_number: '' }));
+    } else {
+      setSerialNumber('');
+      // ensure serial_number exists in formState for OUT mode
+      setFormState(prev => ({ ...prev, serial_number: prev.serial_number ?? '' }));
     }
+  }, [mode]);
 
-    return (
-        <div className="max-w-xl mx-auto">
-             <div className="text-center mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Gate Entry Record</h2>
-                <p className="mt-1 text-md text-slate-600">Log a new vehicle entry or exit.</p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="flex justify-center mb-6">
-                    <div className="flex items-center bg-slate-200 rounded-lg p-1">
-                        <button
-                            onClick={() => setMode('in')}
-                            className={`px-6 py-2 text-sm font-semibold rounded-md transition-colors ${mode === 'in' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-600'}`}
-                        >
-                            Vehicle IN
-                        </button>
-                        <button
-                            onClick={() => setMode('out')}
-                            className={`px-6 py-2 text-sm font-semibold rounded-md transition-colors ${mode === 'out' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-600'}`}
-                        >
-                            Vehicle OUT
-                        </button>
-                    </div>
-                </div>
+  useEffect(() => {
+    const timer = setInterval(() => setTimestamp(new Date().toLocaleString()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-                <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-                    {mode === 'in' ? (
-                        <>
-                            <AutoGeneratedField label="Timestamp" value={timestamp} />
-                            <AutoGeneratedField label="Serial Number" value={serialNumber} />
-                            {renderFields(inFields)}
-                        </>
-                    ) : (
-                        <>
-                            <AutoGeneratedField label="Timestamp" value={timestamp} />
-                            {renderFields(outFields)}
-                        </>
-                    )}
+  // helper setters
+  const setField = (name: string, value: string | boolean) => {
+    setFormState(prev => ({ ...prev, [name]: value }));
+  };
 
-                     <div className="flex justify-center pt-4">
-                        <button type="submit" className="bg-red-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-red-700 transition text-lg disabled:bg-red-400" disabled={isSubmitting}>
-                            {isSubmitting ? 'Processing...' : 'Submit Details'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+  // inputProps per field to improve user experience (optional; your FormField also sanitizes)
+  const getInputProps = (name: string) => {
+    switch (name) {
+      case 'vehicle_number':
+        return {
+          onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+            const v = String(e.currentTarget.value || '').toUpperCase();
+            setField('vehicle_number', v);
+          },
+          onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => {
+            const pasted = (e.clipboardData.getData('text') || '').toUpperCase();
+            e.preventDefault();
+            setField('vehicle_number', pasted);
+          },
+        };
+      case 'phone_number':
+      case 'broker_phone':
+        return {
+          inputMode: 'numeric',
+          maxLength: 10,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            const sanitized = (e.currentTarget.value || '').replace(/\D/g, '').slice(0, 10);
+            setField(name, sanitized);
+          },
+        };
+      case 'serial_number':
+        return {
+          maxLength: 6,
+          onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+            const v = (e.currentTarget.value || '').toUpperCase().slice(0, 6);
+            setField('serial_number', v);
+          },
+        };
+      case 'quantity':
+        return {
+          inputMode: 'numeric',
+          step: '1',
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            const sanitized = (e.currentTarget.value || '').replace(/\D/g, '');
+            setField('quantity', sanitized);
+          },
+        };
+      default:
+        return {};
+    }
+  };
 
-            {isPinModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" onClick={handleCloseModal}>
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-sm animate-fade-in p-6" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold text-slate-800 mb-4">Confirm Entry</h3>
-                        <p className="text-sm text-slate-600 mb-4">Please enter your security PIN to log this entry.</p>
-                        <div>
-                            <label htmlFor="pin-input" className="sr-only">Security PIN</label>
-                            <input
-                                id="pin-input"
-                                type="password"
-                                value={pin}
-                                onChange={(e) => setPin(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handlePinConfirm()}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center text-2xl tracking-[.5em]"
-                                maxLength={4}
-                                placeholder="****"
-                                autoFocus
-                            />
-                        </div>
-                        {pinError && <p className="text-red-500 text-sm mt-2 text-center">{pinError}</p>}
-                        <div className="mt-6 flex justify-end space-x-2">
-                            <button type="button" onClick={handleCloseModal} className="px-4 py-2 bg-gray-200 rounded-md font-medium hover:bg-gray-300">Cancel</button>
-                            <button type="button" onClick={handlePinConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700">Confirm</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+  // Final sanitization & validation on submit (defensive)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Clone current controlled state to validate & sanitize
+      const data: Record<string, any> = { ...formState };
+
+      data.gate_mode = mode;
+      data.timestamp = new Date().toISOString();
+
+      // SERIAL NUMBER
+      if (mode === 'in') {
+        data.serial_number = serialNumber; // generated
+      } else {
+        data.serial_number = String(data.serial_number || '').toUpperCase().slice(0, 6);
+        if (data.serial_number.length !== 6) {
+          alert('Serial Number must be exactly 6 characters (OUT mode).');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // VEHICLE NUMBER -> uppercase if present
+      if (data.vehicle_number) {
+        data.vehicle_number = String(data.vehicle_number).toUpperCase();
+      }
+
+      // PHONE NUMBERS -> digits only, must be 10 digits if present
+      const phoneKeys = ['phone_number', 'broker_phone'];
+      for (const k of phoneKeys) {
+        if (data[k] !== undefined && data[k] !== null && String(data[k]).trim() !== '') {
+          const digits = String(data[k]).replace(/\D/g, '').slice(0, 10);
+          if (digits.length !== 10) {
+            alert(`${k.replace('_', ' ')} must be 10 digits.`);
+            setIsSubmitting(false);
+            return;
+          }
+          data[k] = digits;
+        }
+      }
+
+      // QUANTITY -> integer only, no decimals
+      if (data.quantity !== undefined && data.quantity !== null && String(data.quantity).trim() !== '') {
+        const numericString = String(data.quantity).replace(/[^\d\-]/g, '');
+        const parsed = Number(numericString);
+        if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+          alert('QTY must be an integer (no decimals).');
+          setIsSubmitting(false);
+          return;
+        }
+        data.quantity = parsed;
+      }
+
+      // Everything validated — show PIN modal and hold submitted data
+      setSubmittedData(data);
+      setIsSubmitting(false);
+      setIsPinModalOpen(true);
+    } catch (err) {
+      console.error('Submit error', err);
+      alert('An unexpected error occurred.');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePinConfirm = () => {
+    if (!currentUser || !submittedData) return;
+
+    if (verifyPin(pin)) {
+      // IMPORTANT FIX: submitStageData expects a string stageId – pass arrivalStage.id (not the whole object)
+      if (!arrivalStage || !arrivalStage.id) {
+        console.error('arrivalStage missing or malformed', arrivalStage);
+        alert('Internal error: stage configuration missing.');
+        return;
+      }
+
+      submitStageData(arrivalStage.id, submittedData);
+
+      handleCloseModal();
+      setSubmittedData(null);
+      // reset form
+      formRef.current?.reset();
+      setFormState({});
+      // regenerate serial if still in IN mode
+      if (mode === 'in') {
+        const newSn = generateSerialNumber();
+        setSerialNumber(newSn);
+      }
+    } else {
+      setPinError('Incorrect PIN. Please try again.');
+      setPin('');
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsPinModalOpen(false);
+    setPin('');
+    setPinError('');
+  };
+
+  // Render fields using controlled pattern that matches your FormFieldComponent signature
+  const renderFields = (fields: FormField[]) => {
+    return fields.map(field => (
+      <FormFieldComponent
+        key={field.name}
+        field={field}
+        value={formState[field.name] ?? ''}
+        onChange={(name, value) => setField(name, value)}
+        isRequired={false}
+        inputProps={getInputProps(field.name)}
+      />
+    ));
+  };
+
+  const AutoGeneratedField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <input
+        type="text"
+        value={value}
+        readOnly
+        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-slate-100 text-slate-500 cursor-not-allowed"
+      />
+    </div>
+  );
+
+  if (!arrivalStage || !currentUser) {
+    return <p className="text-center text-red-500">Error: Component failed to load. User or configuration missing.</p>;
+  }
+
+  return (
+    <div className="max-w-xl mx-auto">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Gate Entry Record</h2>
+        <p className="mt-1 text-md text-slate-600">Log a new vehicle entry or exit.</p>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center bg-slate-200 rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setMode('in')}
+              className={`px-6 py-2 text-sm font-semibold rounded-md transition-colors ${mode === 'in' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-600'}`}
+            >
+              Vehicle IN
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('out')}
+              className={`px-6 py-2 text-sm font-semibold rounded-md transition-colors ${mode === 'out' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-600'}`}
+            >
+              Vehicle OUT
+            </button>
+          </div>
         </div>
-    );
+
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'in' ? (
+            <>
+              <AutoGeneratedField label="Timestamp" value={timestamp} />
+              <AutoGeneratedField label="Serial Number" value={serialNumber} />
+              {renderFields(inFields)}
+            </>
+          ) : (
+            <>
+              <AutoGeneratedField label="Timestamp" value={timestamp} />
+              {renderFields(outFields)}
+            </>
+          )}
+
+          <div className="flex justify-center pt-4">
+            <button
+              type="submit"
+              className="bg-red-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-red-700 transition text-lg disabled:bg-red-400"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Processing...' : 'Submit Details'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {isPinModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" onClick={handleCloseModal}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm animate-fade-in p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-slate-800 mb-4">Confirm Entry</h3>
+            <p className="text-sm text-slate-600 mb-4">Please enter your security PIN to log this entry.</p>
+            <div>
+              <label htmlFor="pin-input" className="sr-only">Security PIN</label>
+              <input
+                id="pin-input"
+                type="password"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handlePinConfirm()}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center text-2xl tracking-[.5em]"
+                maxLength={4}
+                placeholder="****"
+                autoFocus
+              />
+            </div>
+            {pinError && <p className="text-red-500 text-sm mt-2 text-center">{pinError}</p>}
+            <div className="mt-6 flex justify-end space-x-2">
+              <button type="button" onClick={handleCloseModal} className="px-4 py-2 bg-gray-200 rounded-md font-medium hover:bg-gray-300">Cancel</button>
+              <button type="button" onClick={handlePinConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };

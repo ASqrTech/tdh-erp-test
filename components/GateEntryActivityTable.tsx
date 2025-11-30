@@ -136,10 +136,10 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
-                            <th className="p-3">Timestamp</th>
                             <th className="p-3">Mode</th>
-                            <th className="p-3">Vehicle No.</th>
+                            <th className="p-3">Vehicle No</th>
                             <th className="p-3">Driver</th>
+                            <th className="p-3">Timestamp</th>
                             <th className="p-3">Actions</th>
                         </tr>
                     </thead>
@@ -152,7 +152,6 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                             const isOut = details.gate_mode === 'out';
                             return (
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
                                     <td className="p-3">
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full uppercase ${isOut ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
                                             {details.gate_mode}
@@ -160,6 +159,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                                     </td>
                                     <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
                                     <td className="p-3">{details.driver_name}</td>
+                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
                                     <td className="p-3">
                                         <button onClick={() => setSelectedRecord(record)} className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full hover:bg-red-200 transition">
                                             Details

@@ -78,8 +78,7 @@ export const GateEntryDetailsModal: React.FC<GateEntryDetailsModalProps> = ({ lo
                                     <DetailItem label="Broker Name" value={details.broker_name} />
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    <DetailItem label="Challan Number" value={details.challan_number} />
+                                <div className="mt-8 space-y-4">
                                     <DetailItem label="From (Broker)" value={details.from_broker} />
                                     <DetailItem label="To Location" value={details.to_location} />
                                 </div>
