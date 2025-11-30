@@ -61,24 +61,20 @@ export const WeighingDetailsModal: React.FC<WeighingDetailsModalProps> = ({ reco
                 </div>
 
                 <div className="p-8 max-h-[70vh] overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 gap-8">
                         <div className="md:col-span-2 grid grid-cols-2 gap-x-8 gap-y-6 bg-white p-6 rounded-xl shadow-md">
                             <h3 className="col-span-2 text-xl font-bold text-red-700 border-b-2 border-red-200 pb-2 mb-2">Vehicle & Weight</h3>
                             <DetailItem label="Vehicle Number" value={details.vehicle_number} />
                             <DetailItem label="Sample Collector" value={details.sample_collector} />
-                            <DetailItem label="In-Weight (kg)" value={inWeight > 0 ? inWeight.toLocaleString() : 'N/A'} />
-                            <DetailItem label="Out-Weight (kg)" value={outWeight > 0 ? outWeight.toLocaleString() : 'N/A'} />
+                            <DetailItem label="InWeight (kg)" value={inWeight > 0 ? inWeight.toLocaleString() : 'N/A'} />
+                            <DetailItem label="OutWeight (kg)" value={outWeight > 0 ? outWeight.toLocaleString() : 'N/A'} />
                              <div className="col-span-2 mt-2 p-4 bg-red-50 rounded-lg text-center">
                                 <p className="text-sm font-medium text-red-800">Net Weight</p>
-                                <p className="text-2xl font-bold text-red-900">{netWeight.toLocaleString()} kg ({netWeightQuintals.toFixed(2)} Qtl)</p>
+                                <p className="text-2xl font-bold text-red-900">{netWeight.toLocaleString()} kg</p>
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-xl shadow-md space-y-4">
-                             <h3 className="text-xl font-bold text-red-700 border-b-2 border-red-200 pb-2 mb-2">Transaction</h3>
-                            <DetailItem label="Challan Number" value={details.challan_number} />
-                            <DetailItem label="Broker Name" value={details.broker_name} />
-                        </div>
+                        
                     </div>
 
                      {details.note && (

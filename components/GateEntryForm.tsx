@@ -71,17 +71,24 @@ export const GateEntryForm: React.FC = () => {
     setFormState(prev => ({ ...prev, [name]: value }));
   };
 
-  // inputProps per field to improve user experience (optional; your FormField also sanitizes)
+  // inputProps per field to improve user experience (vehicle_number now uppercases and maxLength 10)
   const getInputProps = (name: string) => {
     switch (name) {
       case 'vehicle_number':
         return {
+          inputMode: 'text',
+          maxLength: 10,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            // enforce uppercase + max 10 chars while typing
+            const sanitized = (e.currentTarget.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+            setField('vehicle_number', sanitized);
+          },
           onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
-            const v = String(e.currentTarget.value || '').toUpperCase();
+            const v = String(e.currentTarget.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
             setField('vehicle_number', v);
           },
           onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => {
-            const pasted = (e.clipboardData.getData('text') || '').toUpperCase();
+            const pasted = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
             e.preventDefault();
             setField('vehicle_number', pasted);
           },
@@ -142,9 +149,9 @@ export const GateEntryForm: React.FC = () => {
         }
       }
 
-      // VEHICLE NUMBER -> uppercase if present
+      // VEHICLE NUMBER -> uppercase if present, enforce max 10 chars
       if (data.vehicle_number) {
-        data.vehicle_number = String(data.vehicle_number).toUpperCase();
+        data.vehicle_number = String(data.vehicle_number).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
       }
 
       // PHONE NUMBERS -> digits only, must be 10 digits if present

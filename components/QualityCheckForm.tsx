@@ -91,7 +91,7 @@ export const QualityCheckForm: React.FC = () => {
 
     return (
         <div className="space-y-8">
-             <div className="text-left">
+             <div className="flex flex-col items-center">
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Create New Quality Check Record</h2>
                 <p className="mt-1 text-md text-slate-600">Enter the vehicle number and the quality analysis details.</p>
             </div>

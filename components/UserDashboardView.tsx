@@ -110,8 +110,8 @@ export const UserDashboardView: React.FC = () => {
     return (
         <div className="p-4 md:p-6 space-y-8 bg-slate-50 min-h-screen">
             <div>
-                <h1 className="text-2xl font-bold text-slate-800">{data.greeting}</h1>
-                <p className="text-slate-500 mt-1">{data.quote}</p>
+                <h1 className="flex flex-col items-center text-2xl font-bold text-slate-800">{data.greeting}</h1>
+                <p className="flex flex-col items-center text-slate-500 mt-1">{data.quote}</p>
             </div>
 
             {/* Render summary cards if they exist */}

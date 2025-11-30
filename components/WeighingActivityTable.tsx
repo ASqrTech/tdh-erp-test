@@ -135,10 +135,10 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
-                            <th className="p-3">Timestamp</th>
                             <th className="p-3">Vehicle No.</th>
                             <th className="p-3">Ticket No.</th>
-                            <th className="p-3">Net Weight (Qtl)</th>
+                            <th className="p-3">Net Weight (Kg)</th>
+                            <th className="p-3">Timestamp</th>
                             <th className="p-3">Actions</th>
                         </tr>
                     </thead>
@@ -150,14 +150,14 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                             const details = record.details as Record<string, any>;
                             const inWeight = parseFloat(details.in_weight) || 0;
                             const outWeight = parseFloat(details.out_weight) || 0;
-                            const netWeight = Math.abs(inWeight - outWeight) / 100; // Assuming weight is in kgs, converting to quintals
+                            const netWeight = Math.abs(inWeight - outWeight);
 
                             return (
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
                                     <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
-                                    <td className="p-3 text-slate-600">{details.ticket_number}</td>
+                                    <td className="p-3 text-slate-600">{details.ticket_no}</td>
                                     <td className="p-3 font-bold text-slate-800">{netWeight > 0 ? netWeight.toFixed(2) : '-'}</td>
+                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
                                     <td className="p-3">
                                         <button 
                                             onClick={() => setSelectedRecord(record)} 
