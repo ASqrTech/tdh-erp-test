@@ -15,7 +15,7 @@ import {
 export const PROCESS_STAGES: ProcessStage[] = [
     {
         id: 'arrival',
-        name: 'Raw Dal Arrival',
+        name: 'Gate Entry Stage',
         responsibleRole: 'Gate Entry Operator',
         erpModule: 'Arrival_Form',
         dependentOn: 'Supplier Schedule',
@@ -45,7 +45,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     },
     {
         id: 'weighing',
-        name: 'Weighing',
+        name: 'Weighing Stage',
         responsibleRole: 'Weighing Operator',
         erpModule: 'Weighing_Module',
         dependentOn: 'Vehicle Entry',
@@ -129,7 +129,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     },
     {
         id: 'cleaning',
-        name: 'Cleaning',
+        name: 'Cleaning Stage',
         responsibleRole: 'Cleaning Operator',
         erpModule: 'Cleaning_Module',
         dependentOn: 'Raw Dal Arrival',
@@ -148,7 +148,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     },
     {
         id: 'storage',
-        name: 'Storage',
+        name: 'Storage Stage',
         responsibleRole: 'Store Operator',
         erpModule: 'Storage_Module',
         dependentOn: 'Quality Check',
@@ -173,7 +173,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     },
     {
         id: 'processing',
-        name: 'Processing',
+        name: 'Processing Stage',
         responsibleRole: 'Plant Operator',
         erpModule: 'Processing_Module',
         dependentOn: 'Storage',
@@ -193,7 +193,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     },
     {
         id: 'quality_check_2',
-        name: 'Final Quality Re-Check',
+        name: 'Final Quality Check',
         responsibleRole: 'Quality Operator',
         erpModule: 'Quality_Module',
         dependentOn: 'Processing',
@@ -213,7 +213,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     },
     {
         id: 'packing',
-        name: 'Packing',
+        name: 'Packing Stage',
         responsibleRole: 'Packaging Operator',
         erpModule: 'Packing_Module',
         dependentOn: 'Final Quality Re-Check',
@@ -233,7 +233,7 @@ export const PROCESS_STAGES: ProcessStage[] = [
     },
     {
         id: 'dispatch',
-        name: 'Dispatch',
+        name: 'Dispatch Stage',
         responsibleRole: 'Dispatch Operator',
         erpModule: 'Dispatch_Module',
         dependentOn: 'Packing',

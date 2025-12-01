@@ -1,19 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PROCESS_STAGES } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { FormFieldComponent } from './FormField';
 import type { FormField } from '../types';
 
 const generateSerialNumber = () => Math.random().toString(36).substring(2, 8).toUpperCase();
-
-const inFields: FormField[] = [
-  { name: 'vehicle_number', label: 'Vehicle Number', type: 'text', placeholder: 'e.g., AP00XX0000' },
-  { name: 'driver_name', label: 'Driver Name', type: 'text', placeholder: 'e.g., John Doe' },
-  { name: 'phone_number', label: 'Phone Number', type: 'tel', placeholder: 'e.g., 9876543210' },
-  { name: 'from_broker', label: 'From Broker', type: 'text', placeholder: 'e.g., ABC' },
-  { name: 'to_location', label: 'To', type: 'text', placeholder: 'e.g., Tenali' },
-  { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
-];
 
 const outFields: FormField[] = [
   { name: 'serial_number', label: 'Serial Number', type: 'text', placeholder: 'Enter 6-digit S/N from IN-slip' },
@@ -43,20 +34,31 @@ export const GateEntryForm: React.FC = () => {
   // Central controlled form state
   const [formState, setFormState] = useState<Record<string, any>>({});
 
-  // NOTE: arrivalStage is an object from PROCESS_STAGES — keep it here for label/ui checks,
-  // but when calling submitStageData we must pass a string id (arrivalStage.id).
   const arrivalStage = PROCESS_STAGES.find(stage => stage.id === 'arrival');
+
+  // Build IN-mode fields in requested order
+  const inFields: FormField[] = [
+    // Timestamp & Serial Number are auto fields (rendered separately)
+    { name: 'loading_unloading', label: 'Loading / Unloading', type: 'dropdown', options: ['Loading', 'Unloading'] as any },
+    { name: 'vehicle_number', label: 'Vehicle Number', type: 'text', placeholder: 'e.g., AP00XX0000' },
+    { name: 'item', label: 'Item', type: 'text', placeholder: 'e.g., Toor Dal' },
+    { name: 'from_location', label: 'From', type: 'text', placeholder: 'e.g., Tenali' },
+    { name: 'party', label: 'Party', type: 'text', placeholder: 'e.g., Party Name' },
+    { name: 'broker_name', label: 'Broker Name', type: 'text', placeholder: 'e.g., ABC Broker' },
+    { name: 'bags', label: 'Bags', type: 'number', placeholder: 'e.g., 50' },
+    { name: 'driver_name', label: 'Driver Name', type: 'text', placeholder: 'e.g., John Doe' },
+    { name: 'phone_number', label: 'Phone Number', type: 'tel', placeholder: 'e.g., 9876543210' },
+    { name: 'note', label: 'Note', type: 'textarea', placeholder: 'Add any relevant notes' },
+  ];
 
   useEffect(() => {
     // when mode changes, reset or populate serial accordingly
     if (mode === 'in') {
       const sn = generateSerialNumber();
       setSerialNumber(sn);
-      // clear serial_number in state (we show generated)
       setFormState(prev => ({ ...prev, serial_number: '' }));
     } else {
       setSerialNumber('');
-      // ensure serial_number exists in formState for OUT mode
       setFormState(prev => ({ ...prev, serial_number: prev.serial_number ?? '' }));
     }
   }, [mode]);
@@ -66,12 +68,12 @@ export const GateEntryForm: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // helper setters
+  // controlled setter
   const setField = (name: string, value: string | boolean) => {
     setFormState(prev => ({ ...prev, [name]: value }));
   };
 
-  // inputProps per field to improve user experience (vehicle_number now uppercases and maxLength 10)
+  // inputProps for sanitization & behavior (vehicle_number remains text input with uppercase behavior)
   const getInputProps = (name: string) => {
     switch (name) {
       case 'vehicle_number':
@@ -79,7 +81,6 @@ export const GateEntryForm: React.FC = () => {
           inputMode: 'text',
           maxLength: 10,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-            // enforce uppercase + max 10 chars while typing
             const sanitized = (e.currentTarget.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
             setField('vehicle_number', sanitized);
           },
@@ -111,6 +112,15 @@ export const GateEntryForm: React.FC = () => {
             setField('serial_number', v);
           },
         };
+      case 'bags':
+        return {
+          inputMode: 'numeric',
+          step: '1',
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            const sanitized = (e.currentTarget.value || '').replace(/\D/g, '');
+            setField('bags', sanitized);
+          },
+        };
       case 'quantity':
         return {
           inputMode: 'numeric',
@@ -125,21 +135,55 @@ export const GateEntryForm: React.FC = () => {
     }
   };
 
-  // Final sanitization & validation on submit (defensive)
+  // render fields with overrides for loading_unloading dropdown; vehicle_number remains input via FormFieldComponent
+  const renderFields = (fields: FormField[]) => {
+    return fields.map(field => {
+      if (field.name === 'loading_unloading') {
+        return (
+          <div key="loading_unloading">
+            <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
+            <select
+              name="loading_unloading"
+              value={formState.loading_unloading ?? ''}
+              onChange={(e) => setField('loading_unloading', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              required
+            >
+              <option value="">Select</option>
+              <option value="Loading">Loading</option>
+              <option value="Unloading">Unloading</option>
+            </select>
+          </div>
+        );
+      }
+
+      // default uses FormFieldComponent controlled pattern
+      return (
+        <FormFieldComponent
+          key={field.name}
+          field={field}
+          value={formState[field.name] ?? ''}
+          onChange={(name, value) => setField(name, value)}
+          isRequired={false}
+          inputProps={getInputProps(field.name)}
+        />
+      );
+    });
+  };
+
+  // Final validation + show PIN modal
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Clone current controlled state to validate & sanitize
       const data: Record<string, any> = { ...formState };
-
       data.gate_mode = mode;
       data.timestamp = new Date().toISOString();
 
-      // SERIAL NUMBER
+      // SERIAL
       if (mode === 'in') {
-        data.serial_number = serialNumber; // generated
+        data.serial_number = serialNumber;
       } else {
         data.serial_number = String(data.serial_number || '').toUpperCase().slice(0, 6);
         if (data.serial_number.length !== 6) {
@@ -149,9 +193,13 @@ export const GateEntryForm: React.FC = () => {
         }
       }
 
-      // VEHICLE NUMBER -> uppercase if present, enforce max 10 chars
+      // VEHICLE NUMBER -> uppercase & max 10
       if (data.vehicle_number) {
         data.vehicle_number = String(data.vehicle_number).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+      } else if (mode === 'in') {
+        alert('Please enter vehicle number.');
+        setIsSubmitting(false);
+        return;
       }
 
       // PHONE NUMBERS -> digits only, must be 10 digits if present
@@ -168,19 +216,19 @@ export const GateEntryForm: React.FC = () => {
         }
       }
 
-      // QUANTITY -> integer only, no decimals
-      if (data.quantity !== undefined && data.quantity !== null && String(data.quantity).trim() !== '') {
-        const numericString = String(data.quantity).replace(/[^\d\-]/g, '');
-        const parsed = Number(numericString);
+      // Bags integer
+      if (data.bags !== undefined && data.bags !== null && String(data.bags).trim() !== '') {
+        const only = String(data.bags).replace(/\D/g, '');
+        const parsed = Number(only);
         if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
-          alert('QTY must be an integer (no decimals).');
+          alert('Bags must be an integer.');
           setIsSubmitting(false);
           return;
         }
-        data.quantity = parsed;
+        data.bags = parsed;
       }
 
-      // Everything validated — show PIN modal and hold submitted data
+      // Everything validated
       setSubmittedData(data);
       setIsSubmitting(false);
       setIsPinModalOpen(true);
@@ -195,7 +243,6 @@ export const GateEntryForm: React.FC = () => {
     if (!currentUser || !submittedData) return;
 
     if (verifyPin(pin)) {
-      // IMPORTANT FIX: submitStageData expects a string stageId – pass arrivalStage.id (not the whole object)
       if (!arrivalStage || !arrivalStage.id) {
         console.error('arrivalStage missing or malformed', arrivalStage);
         alert('Internal error: stage configuration missing.');
@@ -206,10 +253,8 @@ export const GateEntryForm: React.FC = () => {
 
       handleCloseModal();
       setSubmittedData(null);
-      // reset form
       formRef.current?.reset();
       setFormState({});
-      // regenerate serial if still in IN mode
       if (mode === 'in') {
         const newSn = generateSerialNumber();
         setSerialNumber(newSn);
@@ -226,19 +271,9 @@ export const GateEntryForm: React.FC = () => {
     setPinError('');
   };
 
-  // Render fields using controlled pattern that matches your FormFieldComponent signature
-  const renderFields = (fields: FormField[]) => {
-    return fields.map(field => (
-      <FormFieldComponent
-        key={field.name}
-        field={field}
-        value={formState[field.name] ?? ''}
-        onChange={(name, value) => setField(name, value)}
-        isRequired={false}
-        inputProps={getInputProps(field.name)}
-      />
-    ));
-  };
+  if (!arrivalStage || !currentUser) {
+    return <p className="text-center text-red-500">Error: Component failed to load. User or configuration missing.</p>;
+  }
 
   const AutoGeneratedField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     <div>
@@ -251,10 +286,6 @@ export const GateEntryForm: React.FC = () => {
       />
     </div>
   );
-
-  if (!arrivalStage || !currentUser) {
-    return <p className="text-center text-red-500">Error: Component failed to load. User or configuration missing.</p>;
-  }
 
   return (
     <div className="max-w-xl mx-auto">
@@ -339,3 +370,5 @@ export const GateEntryForm: React.FC = () => {
     </div>
   );
 };
+
+export default GateEntryForm;

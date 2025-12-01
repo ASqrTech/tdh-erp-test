@@ -138,8 +138,9 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                         <tr>
                             <th className="p-3">Mode</th>
                             <th className="p-3">Vehicle No</th>
-                            <th className="p-3">Driver</th>
-                            <th className="p-3">Timestamp</th>
+                            <th className="p-3">From</th>
+                            <th className="p-3">Party</th>
+                            <th className="p-3">Bags</th>
                             <th className="p-3">Actions</th>
                         </tr>
                     </thead>
@@ -158,8 +159,9 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                                         </span>
                                     </td>
                                     <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
-                                    <td className="p-3">{details.driver_name}</td>
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
+                                    <td className="p-3">{details.from_location}</td>
+                                    <td className="p-3">{details.party}</td>
+                                    <td className="p-3">{details.bags}</td>
                                     <td className="p-3">
                                         <button onClick={() => setSelectedRecord(record)} className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full hover:bg-red-200 transition">
                                             Details
