@@ -18,6 +18,11 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
 
     useEffect(() => {
+        if (!currentUser) {
+            setGateRecords([]);
+            return;
+        }
+
         const q = query(collection(db, "arrival_records"), orderBy("timestamp", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const records: LogEntry[] = querySnapshot.docs.map(doc => {
@@ -41,7 +46,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     const filteredRecords = useMemo(() => {
         return (gateRecords || []).filter(record => {

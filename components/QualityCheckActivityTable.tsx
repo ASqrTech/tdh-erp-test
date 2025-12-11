@@ -17,6 +17,11 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
 
     // Fetch arrival records to get party and bags info
     useEffect(() => {
+        if (!currentUser) {
+            setArrivalData(new Map());
+            return;
+        }
+
         const q = query(collection(db, "arrival_records"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const dataMap = new Map<string, { party: string; bags: number }>();
@@ -37,9 +42,14 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     useEffect(() => {
+        if (!currentUser) {
+            setQualityRecords([]);
+            return;
+        }
+
         const q = query(collection(db, "quality-check_records"), orderBy("timestamp", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const records: LogEntry[] = querySnapshot.docs.map(doc => {
@@ -63,7 +73,7 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     const filteredRecords = useMemo(() => {
         return (qualityRecords || []).filter(record => {

@@ -54,7 +54,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ currentUser, onClose
                         </div>
                         <div>
                             <label htmlFor="phone" className={labelClasses}>Phone</label>
-                            <input type="tel" name="phone" id="phone" value={userData.phone || ''} onChange={handleChange} className={inputClasses} />
+                            <input type="tel" name="phone" id="phone" value={userData.phone || ''} onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').slice(0, 10)}})} maxLength={10} pattern="[0-9]{10}" className={inputClasses} />
                         </div>
                          <div className="md:col-span-2">
                             <label htmlFor="address" className={labelClasses}>Address</label>

@@ -67,7 +67,7 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ user
                             </div>
                             <div>
                                 <label htmlFor="phone" className={labelClasses}>Phone Number</label>
-                                <input type="tel" id="phone" name="phone" value={userData.phone || ''} onChange={handleChange} className={inputClasses} disabled={isReadOnly} />
+                                <input type="tel" id="phone" name="phone" value={userData.phone || ''} onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').slice(0, 10)}})} maxLength={10} pattern="[0-9]{10}" className={inputClasses} disabled={isReadOnly} />
                             </div>
                             <div className="md:col-span-2">
                                 <label htmlFor="address" className={labelClasses}>Address</label>

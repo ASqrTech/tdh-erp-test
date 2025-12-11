@@ -24,6 +24,7 @@ export const ManagerView: React.FC = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newEmployee, setNewEmployee] = useState(initialNewEmployeeState);
     const [generatedCredentials, setGeneratedCredentials] = useState<{ pin: string; password: string } | null>(null);
+    const [addUserError, setAddUserError] = useState<string>('');
 
     // State for managing employee details
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -32,15 +33,25 @@ export const ManagerView: React.FC = () => {
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        const credentials = await addUser(newEmployee);
-        setGeneratedCredentials(credentials);
-        setNewEmployee(initialNewEmployeeState);
+        setAddUserError('');
+        try {
+            const credentials = await addUser(newEmployee);
+            setGeneratedCredentials(credentials);
+            setNewEmployee(initialNewEmployeeState);
+        } catch (error: any) {
+            if (error.code === 'auth/email-already-in-use') {
+                setAddUserError(`The email "${newEmployee.email}" is already in use. Please use a different email address.`);
+            } else {
+                setAddUserError(error.message || 'Failed to create user. Please try again.');
+            }
+        }
     };
     
     const closeAddModal = () => {
         setIsAddModalOpen(false);
         setGeneratedCredentials(null);
         setNewEmployee(initialNewEmployeeState);
+        setAddUserError('');
     }
 
     const openDetailsModal = (user: User, mode: 'view' | 'edit') => {
@@ -232,6 +243,11 @@ export const ManagerView: React.FC = () => {
                             </div>
                         ) : (
                             <form onSubmit={handleAddUser}>
+                                {addUserError && (
+                                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                                        {addUserError}
+                                    </div>
+                                )}
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
@@ -243,7 +259,7 @@ export const ManagerView: React.FC = () => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                        <input type="tel" value={newEmployee.phone} onChange={e => setNewEmployee({...newEmployee, phone: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="555-123-4567" />
+                                        <input type="tel" value={newEmployee.phone} onChange={e => setNewEmployee({...newEmployee, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})} maxLength={10} pattern="[0-9]{10}" className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="9876543210" />
                                     </div>
                                      <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>

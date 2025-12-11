@@ -34,39 +34,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [passwordRequests, setPasswordRequests] = useState<Array<{ userId: string; email: string; userName: string; userRole: string; requestedAt: Date }>>([]);
     const [loading, setLoading] = useState(true);
+    const [userDocLoaded, setUserDocLoaded] = useState(false);
 
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, user => {
             if (user) {
+                setUserDocLoaded(false);
                 const userRef = doc(db, "users", user.uid);
                 const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
-                    setCurrentUser(doc.exists() ? { id: user.uid, ...doc.data() } as User : null);
+                    if (doc.exists()) {
+                        setCurrentUser({ id: user.uid, ...doc.data() } as User);
+                        setUserDocLoaded(true);
+                    } else {
+                        setCurrentUser(null);
+                        setUserDocLoaded(false);
+                    }
                     setLoading(false);
                 }, (error: any) => {
                     if (error.code !== 'permission-denied') {
                         console.error("Error fetching user document:", error);
                     }
                     setCurrentUser(null);
+                    setUserDocLoaded(false);
                     setLoading(false);
                 });
                 return () => unsubscribeSnapshot();
             } else {
                 setCurrentUser(null);
+                setUserDocLoaded(false);
                 setLoading(false);
             }
         });
         return () => unsubscribeAuth();
     }, []);
 
-    // Set up all data listeners when a user is authenticated
+    // Set up all data listeners ONLY when user is authenticated AND user doc is loaded
     useEffect(() => {
-        if (!currentUser) {
+        if (!currentUser || !userDocLoaded) {
             setUsers([]);
             setPasswordRequests([]);
             setLogs([]);
-            return;
+            return; // Don't set up any listeners until fully authenticated
         }
 
+        // Only set up listeners if authenticated AND user doc loaded
         const logCollections = PROCESS_STAGES.map(stage => stage.id);
         const unsubscribers = logCollections.map(stageId => {
             const logQuery = collection(db, `${stageId}_records`);
@@ -101,7 +112,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             unsubscribers.forEach(unsub => unsub());
             unsubscribeUsers();
         };
-    }, [currentUser]);
+    }, [currentUser, userDocLoaded]);
 
     const login = async (identifier: string, pass: string, pin: string) => {
     let userEmail = identifier;
@@ -138,15 +149,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const newPin = Math.floor(1000 + Math.random() * 9000).toString();
         const newPassword = 'password';
 
-        const secondaryAppName = 'secondary-auth';
-        let secondaryApp = getApps().find(app => app.name === secondaryAppName) || initializeApp(firebaseConfig, secondaryAppName);
-        const secondaryAuth = getAuth(secondaryApp);
+        try {
+            const secondaryAppName = 'secondary-auth';
+            const existingApp = getApps().find(app => app.name === secondaryAppName);
+            let secondaryApp;
+            
+            if (existingApp) {
+                secondaryApp = existingApp;
+            } else {
+                secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+            }
+            
+            const secondaryAuth = getAuth(secondaryApp);
 
-        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, details.email, newPassword);
-        const newUser = { ...details, pin: newPin, status: 'ACTIVE' };
-        
-        await setDoc(doc(db, "users", userCredential.user.uid), newUser);
-        return { pin: newPin, password: newPassword };
+            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, details.email, newPassword);
+            const newUser = { ...details, pin: newPin, status: 'ACTIVE' };
+            
+            await setDoc(doc(db, "users", userCredential.user.uid), newUser);
+            
+            // Sign out from secondary auth to avoid conflicts
+            await signOut(secondaryAuth);
+            
+            return { pin: newPin, password: newPassword };
+        } catch (error) {
+            console.error('Error creating user:', error);
+            throw error;
+        }
     };
 
     const updateUserDetails = async (updatedUser: User) => {

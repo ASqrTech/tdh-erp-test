@@ -85,7 +85,10 @@ export const QualityCheckForm: React.FC = () => {
           setInVehicles(unique);
           setVehiclesLoading(false);
         }, err => {
-          console.error('Error listening arrival_records:', err);
+          // Only log error if user is still authenticated (ignore logout errors)
+          if (currentUser && mounted) {
+            console.error('Error listening arrival_records:', err);
+          }
           if (mounted) {
             setInVehicles([]);
             setVehiclesLoading(false);
@@ -216,7 +219,6 @@ export const QualityCheckForm: React.FC = () => {
           <select
             name="vehicle_number"
             defaultValue=""
-            required={field.required ?? true}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <option value="" disabled>{vehiclesLoading ? 'Loading IN vehicles...' : 'Select Vehicle Number'}</option>
@@ -252,7 +254,6 @@ export const QualityCheckForm: React.FC = () => {
               onWheel={(e) => (e.target as HTMLElement).blur()}
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
               placeholder={field.placeholder || ''}
-              required={field.required ?? true}
             />
           </div>
         );
@@ -264,6 +265,7 @@ export const QualityCheckForm: React.FC = () => {
         key={field.name}
         field={field}
         layout="horizontal"
+        isRequired={false}
       />
     );
   };

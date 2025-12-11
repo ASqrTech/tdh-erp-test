@@ -98,7 +98,7 @@ export const StorageForm: React.FC = () => {
                                 return (
                                     <div key={field.name}>
                                         <label htmlFor={field.name} className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                                        <select id={field.name} name={field.name} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500" defaultValue="" onChange={e => setSelectedLocationArea(e.target.value)} required>
+                                        <select id={field.name} name={field.name} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500" defaultValue="" onChange={e => setSelectedLocationArea(e.target.value)}>
                                             <option value="" disabled>Select an area</option>
                                             {field.options?.map(option => <option key={option} value={option}>{option}</option>)}
                                         </select>
@@ -115,7 +115,7 @@ export const StorageForm: React.FC = () => {
                                     />
                                 );
                             }
-                            return <FormFieldComponent key={field.name} field={field} />;
+                            return <FormFieldComponent key={field.name} field={field} isRequired={false} />;
                         })}
                     </div>
                 </div>

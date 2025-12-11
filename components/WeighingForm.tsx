@@ -78,7 +78,10 @@ export const WeighingForm: React.FC = () => {
                     setInVehicles(unique);
                     setVehiclesLoading(false);
                 }, err => {
-                    console.error('Error listening arrival_records:', err);
+                    // Only log error if user is still authenticated (ignore logout errors)
+                    if (currentUser && mounted) {
+                        console.error('Error listening arrival_records:', err);
+                    }
                     if (mounted) {
                         setInVehicles([]);
                         setVehiclesLoading(false);
@@ -192,7 +195,6 @@ export const WeighingForm: React.FC = () => {
                                         <select
                                             name="vehicle_number"
                                             defaultValue=""
-                                            required={field.required ?? true}
                                             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                                         >
                                             <option value="" disabled>{vehiclesLoading ? 'Loading vehicles...' : 'Select Vehicle Number'}</option>
@@ -220,7 +222,6 @@ export const WeighingForm: React.FC = () => {
                                             onWheel={(e) => (e.target as HTMLElement).blur()} // prevent scroll-change
                                             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                                             placeholder="Enter in weight"
-                                            required
                                         />
                                     </div>
                                 );
@@ -242,14 +243,13 @@ export const WeighingForm: React.FC = () => {
                                             onWheel={(e) => (e.target as HTMLElement).blur()}
                                             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                                             placeholder="Enter out weight"
-                                            required
                                         />
                                     </div>
                                 );
                             }
 
                             // otherwise render existing generic field component
-                            return <FormFieldComponent key={field.name} field={field} />;
+                            return <FormFieldComponent key={field.name} field={field} isRequired={field.name === 'ticket_number'} />;
                         })}
                     </div>
                 </div>

@@ -74,6 +74,12 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
       const used = await loadFromAuth();
       if (used) return;
 
+      // Don't start listener if user is not authenticated
+      if (!currentUser) {
+        if (mounted) { setInVehicles([]); setVehiclesLoading(false); }
+        return;
+      }
+
       try {
         const q = query(collection(db, 'arrival_records'));
         const unsub = onSnapshot(q, snapshot => {
@@ -95,7 +101,10 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
           setVehicleDriverMap(driverMap);
           setVehiclesLoading(false);
         }, err => {
-          console.error('arrival_records listen error', err);
+          // Only log error if user is still authenticated (ignore logout errors)
+          if (currentUser && mounted) {
+            console.error('arrival_records listen error', err);
+          }
           if (mounted) { setInVehicles([]); setVehiclesLoading(false); }
         });
         return unsub;
@@ -144,7 +153,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
     setSuccess(null);
 
     try {
-      // required fields
+      // Only vehicle_number is required
       const vehicle = String(formData.vehicle_number || '').trim();
       const destination = sanitizeName(String(formData.destination || ''));
       const client = sanitizeName(String(formData.client_name || ''));
@@ -220,8 +229,8 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
   // compute net weight as integer difference, show Quintal as earlier if desired
   const grossInt = parseInt(sanitizeInteger(String(formData.gross_weight ?? formData.in_weight ?? '0')) || '0', 10);
   const tareInt = parseInt(sanitizeInteger(String(formData.tare_weight ?? formData.out_weight ?? '0')) || '0', 10);
-  const netKg = Math.max(0, grossInt - tareInt);
-  const netQuintal = (netKg / 100).toFixed(2);
+  const netKg = Math.abs(grossInt - tareInt);
+  const netQuintal = (netKg);
 
   // render fields - vehicle_number rendered as dropdown, filter out no_of_bags
   const mainFields = stageConfig.formFields.filter(f => !f.name.startsWith('item') && f.name !== 'no_of_bags');

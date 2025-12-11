@@ -8,6 +8,7 @@ import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/fire
 type TimeFilter = '24h' | 'week' | 'month' | 'custom';
 
 export const DispatchActivityTable: React.FC = () => {
+    const { currentUser } = useAuth();
     const [dispatchRecords, setDispatchRecords] = useState<LogEntry[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
@@ -18,6 +19,11 @@ export const DispatchActivityTable: React.FC = () => {
 
     // Fetch dispatch records from dispatch_records collection
     useEffect(() => {
+        if (!currentUser) {
+            setDispatchRecords([]);
+            return;
+        }
+
         const q = query(collection(db, 'dispatch_records'), orderBy('timestamp', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const records: LogEntry[] = snapshot.docs.map(doc => {
@@ -41,10 +47,15 @@ export const DispatchActivityTable: React.FC = () => {
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     // Fetch weighing records to get out_weight data
     useEffect(() => {
+        if (!currentUser) {
+            setWeighingRecords([]);
+            return;
+        }
+
         const q = query(collection(db, 'weighing_records'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const records: LogEntry[] = snapshot.docs.map(doc => ({
@@ -57,7 +68,7 @@ export const DispatchActivityTable: React.FC = () => {
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     // Create a map of vehicle numbers to out_weight from weighing records
     const vehicleWeightMap = useMemo(() => {

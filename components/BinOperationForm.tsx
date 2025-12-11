@@ -89,6 +89,7 @@ export const BinOperationForm: React.FC = () => {
                                 key={field.name} 
                                 field={field} 
                                 defaultValue={field.name === 'ticket_number' ? latestWeighingTicket : undefined}
+                                isRequired={field.name === 'ticket_number' || field.name === 'operation'}
                             />
                         ))}
                     </div>

@@ -18,6 +18,12 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
 
     useEffect(() => {
+        // Guard: Don't set up listener if user is not authenticated
+        if (!currentUser) {
+            setWeighingRecords([]);
+            return;
+        }
+
         // Assuming the collection is named 'weighing_records'
         const q = query(collection(db, "weighing_records"), orderBy("timestamp", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -42,7 +48,7 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     const filteredRecords = useMemo(() => {
         return (weighingRecords || []).filter(record => {

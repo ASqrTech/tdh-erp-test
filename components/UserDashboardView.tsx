@@ -54,12 +54,6 @@ export const UserDashboardView: React.FC = () => {
                     ...baseData,
                     greeting: "Dispatch Console",
                     quote: "Manage and record all outbound shipments.",
-                    summaryCards: [
-                        { icon: <PaperAirplaneIcon />, label: "Today's Dispatches", value: "15" },
-                        { icon: <ClockIcon />, label: "Pending Shipments", value: "2" },
-                        { icon: <TruckIcon />, label: "Vehicles on Route", value: "10" },
-                        { icon: <DocumentTextIcon />, label: "Total Items Shipped", value: "1,200" },
-                    ],
                     activityComponent: <DispatchActivityTable currentUser={currentUser} />
                 };
 
