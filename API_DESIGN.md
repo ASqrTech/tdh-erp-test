@@ -83,8 +83,8 @@ Records gross, tare, and net weights.
 | `id`            | `BIGSERIAL`      | `PRIMARY KEY`               |                                           |
 | `vehicle_number`| `VARCHAR(20)`    | `NOT NULL, INDEX`           | Links to gate entry                       |
 | `ticket_number` | `VARCHAR(50)`    | `UNIQUE`                    | Weighbridge ticket no                     |
-| `in_weight`     | `DECIMAL(10,2)`  | `NOT NULL`                  | Gross Weight (Quintals)                   |
-| `out_weight`    | `DECIMAL(10,2)`  | `NOT NULL`                  | Tare Weight (Quintals)                    |
+| `in_weight`     | `DECIMAL(10,2)`  | `NOT NULL`                  | In weight (Quintals)                   |
+| `out_weight`    | `DECIMAL(10,2)`  | `NOT NULL`                  | Out weight (Quintals)                    |
 | `net_weight`    | `DECIMAL(10,2)`  | `GENERATED`                 | (In - Out)                                |
 | `sample_collector`| `VARCHAR(100)` |                             |                                           |
 | `note`          | `TEXT`           |                             |                                           |

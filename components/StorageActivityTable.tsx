@@ -60,10 +60,11 @@ export const StorageActivityTable: React.FC<{ currentUser: User }> = ({ currentU
             // Search Filter
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
+            const uppercasedSearch = searchTerm.toUpperCase();
             const data = (log.details as any).submittedData;
             
             return (
-                data.entered_vehicle?.toLowerCase().includes(lowercasedSearch) ||
+                data.entered_vehicle?.toUpperCase().includes(uppercasedSearch) ||
                 data.material_content?.toLowerCase().includes(lowercasedSearch) ||
                 data.location?.toLowerCase().includes(lowercasedSearch)
             );
@@ -156,7 +157,7 @@ export const StorageActivityTable: React.FC<{ currentUser: User }> = ({ currentU
                             return (
                                 <tr key={log.id} className="border-b hover:bg-slate-50">
                                     <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
-                                    <td className="p-3 font-medium text-slate-800">{data.entered_vehicle}</td>
+                                    <td className="p-3 font-medium text-slate-800">{data.entered_vehicle?.toUpperCase()}</td>
                                     <td className="p-3">{data.quantity}</td>
                                     <td className="p-3">{data.material_content}</td>
                                     <td className="p-3">{data.location}</td>

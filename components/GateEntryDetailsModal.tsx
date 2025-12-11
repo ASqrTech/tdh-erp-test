@@ -103,7 +103,7 @@ return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-5 rounded-xl shadow-md space-y-4">
                 <h3 className="text-lg font-bold text-red-700 border-b pb-2">Vehicle & Driver Information</h3>
-                <DetailItem label="Vehicle Number" value={details.vehicle_number} />
+                <DetailItem label="Vehicle Number" value={details.vehicle_number?.toUpperCase()} />
                 <DetailItem label="Driver Name" value={details.driver_name} />
                 <DetailItem label="Driver Phone" value={details.phone_number} />
                 <DetailItem label="Bags" value={details.bags ?? details.no_of_bags ?? 'N/A'} />

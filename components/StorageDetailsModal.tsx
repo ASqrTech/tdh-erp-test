@@ -47,7 +47,7 @@ export const StorageDetailsModal: React.FC<StorageDetailsModalProps> = ({ log, o
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800">Storage Details</h2>
                         <p className="text-sm text-slate-500">
-                            Vehicle <span className="font-semibold">{storageData.entered_vehicle}</span> on {new Date(log.timestamp).toLocaleString()}
+                            Vehicle <span className="font-semibold">{storageData.entered_vehicle?.toUpperCase()}</span> on {new Date(log.timestamp).toLocaleString()}
                         </p>
                     </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full p-2 transition">

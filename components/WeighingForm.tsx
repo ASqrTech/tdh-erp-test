@@ -192,7 +192,7 @@ export const WeighingForm: React.FC = () => {
                             if (field.name === 'gross_weight' || field.name === 'in_weight') {
                                 return (
                                     <div key="in_weight" className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">In Weight (Kg)</label>
+                                        <label className="block text-sm font-medium text-slate-700">In Weight (ql)</label>
                                         <input
                                             name="in_weight"
                                             type="number"
@@ -214,7 +214,7 @@ export const WeighingForm: React.FC = () => {
                             if (field.name === 'tare_weight' || field.name === 'out_weight') {
                                 return (
                                     <div key="out_weight" className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">Out Weight (Kg)</label>
+                                        <label className="block text-sm font-medium text-slate-700">Out Weight (ql)</label>
                                         <input
                                             name="out_weight"
                                             type="number"

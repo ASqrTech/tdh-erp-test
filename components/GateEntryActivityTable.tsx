@@ -76,11 +76,12 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
 
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
+            const uppercasedSearch = searchTerm.toUpperCase();
             
             // Access data from the details object
             const details = record.details as Record<string, any>;
             return (
-                details.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
+                details.vehicle_number?.toUpperCase().includes(uppercasedSearch) ||
                 details.driver_name?.toLowerCase().includes(lowercasedSearch) ||
                 details.challan_number?.toLowerCase().includes(lowercasedSearch)
             );
@@ -158,7 +159,7 @@ export const GateEntryActivityTable: React.FC<{ currentUser: User }> = ({ curren
                                             {details.gate_mode}
                                         </span>
                                     </td>
-                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
+                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number?.toUpperCase()}</td>
                                     <td className="p-3">{details.from_location}</td>
                                     <td className="p-3">{details.party}</td>
                                     <td className="p-3">{details.bags}</td>

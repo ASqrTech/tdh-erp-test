@@ -77,10 +77,11 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
 
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
+            const uppercasedSearch = searchTerm.toUpperCase();
             const details = record.details as Record<string, any>;
 
             return (
-                details.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
+                details.vehicle_number?.toUpperCase().includes(uppercasedSearch) ||
                 details.ticket_no?.toLowerCase().includes(lowercasedSearch) // Search by ticket number
             );
         });
@@ -136,9 +137,9 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
                             <th className="p-3">Vehicle No.</th>
+                            <th className="p-3">Net Weight (ql)</th>
+                            <th className="p-3">Sample Collector</th>
                             <th className="p-3">Ticket No.</th>
-                            <th className="p-3">Net Weight (Kg)</th>
-                            <th className="p-3">Timestamp</th>
                             <th className="p-3">Actions</th>
                         </tr>
                     </thead>
@@ -154,10 +155,10 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
 
                             return (
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
+                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number?.toUpperCase()}</td>
+                                    <td className="p-3 font-bold text-slate-800">{netWeight > 0 ? netWeight.toFixed(2) : '-'}</td>                                   
+                                    <td className="p-3 text-slate-600">{details.sample_collector || '-'}</td>                                    
                                     <td className="p-3 text-slate-600">{details.ticket_no}</td>
-                                    <td className="p-3 font-bold text-slate-800">{netWeight > 0 ? netWeight.toFixed(2) : '-'}</td>
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
                                     <td className="p-3">
                                         <button 
                                             onClick={() => setSelectedRecord(record)} 

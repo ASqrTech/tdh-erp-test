@@ -73,11 +73,12 @@ export const BinOperationActivityTable: React.FC<{ currentUser: User }> = ({ cur
             // Search Filter
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
+            const uppercasedSearch = searchTerm.toUpperCase();
             const data = (log.details as any).submittedData;
             const driverName = driverNameMap.get(data.vehicle_number) || '';
             
             return (
-                data.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
+                data.vehicle_number?.toUpperCase().includes(uppercasedSearch) ||
                 data.bin_status?.toLowerCase().includes(lowercasedSearch) ||
                 driverName.toLowerCase().includes(lowercasedSearch)
             );
@@ -170,7 +171,7 @@ export const BinOperationActivityTable: React.FC<{ currentUser: User }> = ({ cur
                             return (
                                 <tr key={log.id} className="border-b hover:bg-slate-50">
                                     <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
-                                    <td className="p-3 font-medium text-slate-800">{data.vehicle_number}</td>
+                                    <td className="p-3 font-medium text-slate-800">{data.vehicle_number?.toUpperCase()}</td>
                                     <td className="p-3">{driverName}</td>
                                     <td className="p-3">
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${

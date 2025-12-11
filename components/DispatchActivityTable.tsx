@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext'; // Using the central auth context is the correct pattern.
 import type { LogEntry } from '../types';
 import { DispatchDetailsModal } from './DispatchDetailsModal';
+import { db } from '../firebase/firebase';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 
 type TimeFilter = '24h' | 'week' | 'month' | 'custom';
 
@@ -14,6 +16,39 @@ export const DispatchActivityTable: React.FC = () => {
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
+    const [weighingRecords, setWeighingRecords] = useState<LogEntry[]>([]);
+
+    // Fetch weighing records to get out_weight data
+    useEffect(() => {
+        const q = query(collection(db, 'weighing_records'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const records: LogEntry[] = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as LogEntry));
+            setWeighingRecords(records);
+        }, (error) => {
+            console.error('Error fetching weighing records:', error);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // Create a map of vehicle numbers to out_weight from weighing records
+    const vehicleWeightMap = useMemo(() => {
+        const map = new Map<string, number>();
+        weighingRecords.forEach(record => {
+            if (typeof record.details !== 'object' || record.details === null) return;
+            const details = record.details as Record<string, any>;
+            const vehicleNumber = details.vehicle_number;
+            const outWeight = parseFloat(details.out_weight) || 0;
+            if (vehicleNumber && outWeight > 0) {
+                // Normalize to uppercase for consistent matching
+                map.set(String(vehicleNumber).toUpperCase(), outWeight);
+            }
+        });
+        return map;
+    }, [weighingRecords]);
 
     // Helper component for reusable filter buttons (same style / behavior as in weighing table)
     const FilterButton: React.FC<{ filter: TimeFilter; label: string }> = ({ filter, label }) => (
@@ -66,10 +101,11 @@ export const DispatchActivityTable: React.FC = () => {
 
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
+            const uppercasedSearch = searchTerm.toUpperCase();
             const details = (record.details || {}) as Record<string, any>;
 
             return (
-                (details.vehicle_number?.toString().toLowerCase().includes(lowercasedSearch)) ||
+                (details.vehicle_number?.toString().toUpperCase().includes(uppercasedSearch)) ||
                 (details.client_name?.toString().toLowerCase().includes(lowercasedSearch)) ||
                 (details.destination?.toString().toLowerCase().includes(lowercasedSearch)) ||
                 (details.ticket_number?.toString().toLowerCase().includes(lowercasedSearch))
@@ -142,10 +178,10 @@ export const DispatchActivityTable: React.FC = () => {
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
-                            <th className="p-3">Timestamp</th>
                             <th className="p-3">Vehicle No.</th>
                             <th className="p-3">Client Name</th>
                             <th className="p-3">Destination</th>
+                            <th className="p-3">Weighbridge weight (ql)</th>
                             <th className="p-3">Net Weight (Qtl)</th>
                             <th className="p-3">Actions</th>
                         </tr>
@@ -156,13 +192,16 @@ export const DispatchActivityTable: React.FC = () => {
                             const grossWeight = parseFloat(details.gross_weight) || 0;
                             const tareWeight = parseFloat(details.tare_weight) || 0;
                             const netWeight = (grossWeight > 0 && tareWeight > 0) ? ((grossWeight - tareWeight).toFixed(2)) : '-';
+                            const vehicleNumber = details.vehicle_number;
+                            // Normalize to uppercase for Map lookup
+                            const weighbridgeWeight = vehicleWeightMap.get(String(vehicleNumber || '').toUpperCase()) || 0;
 
                             return (
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
-                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
+                                    <td className="p-3 font-medium text-slate-800">{vehicleNumber?.toUpperCase()}</td>
                                     <td className="p-3 text-slate-600">{details.client_name}</td>
                                     <td className="p-3 text-slate-600">{details.destination}</td>
+                                    <td className="p-3 font-bold text-slate-800">{weighbridgeWeight > 0 ? weighbridgeWeight.toLocaleString() : '-'}</td>
                                     <td className="p-3 font-bold text-slate-800">{netWeight}</td>
                                     <td className="p-3">
                                         <button

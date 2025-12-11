@@ -126,24 +126,23 @@ export const QualityCheckDetailsModal: React.FC<QualityCheckDetailsModalProps> =
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} // respect phone safe area
       >
         {/* Header */}
-        <div className="bg-white p-4 rounded-t-2xl sm:rounded-t-2xl border-b flex items-start justify-between">
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-bold text-slate-800">
-              Quality Inspection
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 truncate">
-              Vehicle: <span className="font-semibold">{details.vehicle_number ?? 'N/A'}</span>
-            </p>
-            <div className="text-xs text-slate-400">{new Date(record.timestamp).toLocaleString()}</div>
+        <div className="p-5 border-b bg-white rounded-t-2xl sm:rounded-t-2xl">
+          <div className="flex items-start justify-between gap-3">
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-slate-800 leading-tight flex-shrink">Quality Inspection</h2>
+            
+            {/* User/Ticket card */}
+            <div className="bg-slate-200 px-4 py-3 rounded-xl shadow-md flex-shrink-0">
+              <div className="text-sm whitespace-nowrap">
+                User: <span className="font-semibold">{record.userName ?? record.userId}</span>
+              </div>
+              {details.transaction_id && (
+                <p className="mt-1 text-sm whitespace-nowrap">
+                  Ticket: <span className="font-semibold">{String(details.transaction_id)}</span>
+                </p>
+              )}
+            </div>
           </div>
-
-          <button
-            onClick={onClose}
-            className="ml-3 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-full p-2 transition-all duration-150"
-            aria-label="Close"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
         </div>
 
         {/* Body (scrollable). Reduced max-height so footer area remains visible */}
@@ -151,7 +150,7 @@ export const QualityCheckDetailsModal: React.FC<QualityCheckDetailsModalProps> =
 
           {/* Test Results & Details */}
           <div className="bg-white p-4 rounded-xl shadow-md">
-            <h3 className="text-sm font-semibold text-red-700 mb-3">Test Results & Details</h3>
+            <h3 className="text-xl font-bold text-red-700 border-b-2 border-red-200 pb-2 mb-3">Test Results & Details</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {orderedKeys.map((k) =>
@@ -174,7 +173,15 @@ export const QualityCheckDetailsModal: React.FC<QualityCheckDetailsModalProps> =
               })}
             </div>
           </div>
-
+              {/* Recorded: full-width card, will wrap (no horizontal overflow) */}
+              <div className="w-full">
+                <p className="text-base text-slate-700 bg-white p-4 rounded-xl shadow-md break-words">
+                  Recorded: {new Date(record.timestamp).toLocaleString('en-US', {
+                    dateStyle: 'full',
+                    timeStyle: 'short',
+                  })}
+                </p>
+              </div>
           {/* Remarks */}
           {details.remarks && (
             <div className="bg-white p-3 rounded-xl shadow-md">
@@ -186,7 +193,7 @@ export const QualityCheckDetailsModal: React.FC<QualityCheckDetailsModalProps> =
           {/* Upload preview */}
           {details.upload_report && (
             <div className="bg-white p-3 rounded-xl shadow-md">
-              <h3 className="text-sm font-semibold text-red-700 mb-2">Uploaded Report</h3>
+              <h3 className="text-xl font-bold text-red-700 border-b-2 border-red-200 pb-2 mb-3">Uploaded Report</h3>
               <div>
                 {isBase64DataUrl(details.upload_report) ? (
                   details.upload_report.startsWith('data:image/') ? (
@@ -203,7 +210,7 @@ export const QualityCheckDetailsModal: React.FC<QualityCheckDetailsModalProps> =
             </div>
           )}
         <div className="bg-white p-4 rounded-xl shadow-md">
-            <h3 className="text-sm font-semibold text-red-700 mb-2">Note</h3>
+            <h3 className="text-xl font-bold text-red-700 border-b-2 border-red-200 pb-2 mb-3">Additional Notes</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="font-semibold text-slate-800">{details.note ?? 'N/A'}</p>
@@ -217,10 +224,6 @@ export const QualityCheckDetailsModal: React.FC<QualityCheckDetailsModalProps> =
           className="bg-slate-100 p-3 sm:p-4 border-t flex justify-end gap-3 sticky bottom-0 z-30 rounded-b-2xl"
           style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + 8px)` }} // ensure safe area + spacing
         >
-          <div className="flex-1 text-xs text-slate-500 hidden sm:flex items-center">
-            <div>Inspected By: <span className="font-medium ml-2">{record.userName ?? 'Unknown'}</span></div>
-          </div>
-
           <button onClick={onClose} className="bg-slate-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-slate-700 transition-colors">
             Close
           </button>

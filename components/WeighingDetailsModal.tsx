@@ -50,26 +50,21 @@ export const WeighingDetailsModal: React.FC<WeighingDetailsModalProps> = ({ reco
           role="dialog"
           aria-modal="true"
         >
-          {/* Header: single row flex. left can shrink, right is fixed-ish and will not overflow */}
-          <div className="p-6 border-b bg-white flex items-start justify-between gap-4">
-            {/* Left: title (shrinkable) */}
-            <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-bold text-slate-800 leading-tight">Weighing Ticket</h2>
-            </div>
-
-            {/* Right: user/ticket card - regular flow (no absolute). controlled width and won't push below */}
-            <div className="flex-shrink-0 max-w-[140px] w-auto">
-              <div className="bg-slate-200 text-slate-900 px-4 py-3 rounded-xl shadow-md">
-                <div className="text-sm">
-                  User:
-                  <span className="font-semibold block">{(details.userName ?? details.user_id ?? details.user) || 'N/A'}</span>
+          {/* Header */}
+          <div className="p-5 border-b bg-white">
+            <div className="flex items-start justify-between gap-3">
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-slate-800 leading-tight flex-shrink">Weighing Ticket</h2>
+              
+              {/* User/Ticket card */}
+              <div className="bg-slate-200 px-4 py-3 rounded-xl shadow-md flex-shrink-0">
+                <div>
+                  User: <span className="font-semibold">{record.userName ?? record.userId}</span>
                 </div>
-
                 {details.ticket_no && (
-                  <div className="mt-2 text-sm">
-                    Ticket No:
-                    <span className="font-semibold block">{String(details.ticket_no)}</span>
-                  </div>
+                  <p className="mt-1">
+                    Ticket: <span className="font-semibold">{String(details.ticket_no)}</span>
+                  </p>
                 )}
               </div>
             </div>
@@ -83,10 +78,10 @@ export const WeighingDetailsModal: React.FC<WeighingDetailsModalProps> = ({ reco
                 <h3 className="text-xl font-bold text-red-700 border-b-2 border-red-200 pb-2 mb-4">Vehicle & Weight</h3>
 
                 <div className="grid grid-cols-2 gap-6">
-                  <DetailItem label="Vehicle Number" value={details.vehicle_number} />
+                  <DetailItem label="Vehicle Number" value={details.vehicle_number?.toUpperCase()} />
                   <DetailItem label="Sample Collector" value={details.sample_collector} />
-                  <DetailItem label="InWeight (kg)" value={inWeight > 0 ? inWeight.toLocaleString() : 'N/A'} />
-                  <DetailItem label="OutWeight (kg)" value={outWeight > 0 ? outWeight.toLocaleString() : 'N/A'} />
+                  <DetailItem label="InWeight (ql)" value={inWeight > 0 ? inWeight.toLocaleString() : 'N/A'} />
+                  <DetailItem label="OutWeight (ql)" value={outWeight > 0 ? outWeight.toLocaleString() : 'N/A'} />
                 </div>
 
                 <div className="mt-6 p-4 bg-red-50 rounded-lg text-center">

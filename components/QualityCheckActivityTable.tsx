@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase/firebase';
-import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp, where, getDocs } from 'firebase/firestore';
 import type { User, LogEntry } from '../types';
 import { QualityCheckDetailsModal } from './QualityCheckDetailsModal';
 
@@ -8,11 +8,36 @@ type TimeFilter = '24h' | 'week' | 'month' | 'custom';
 
 export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ currentUser }) => {
     const [qualityRecords, setQualityRecords] = useState<LogEntry[]>([]);
+    const [arrivalData, setArrivalData] = useState<Map<string, { party: string; bags: number }>>(new Map());
     const [searchTerm, setSearchTerm] = useState('');
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
+
+    // Fetch arrival records to get party and bags info
+    useEffect(() => {
+        const q = query(collection(db, "arrival_records"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const dataMap = new Map<string, { party: string; bags: number }>();
+            querySnapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const details = data.details || data;
+                const vehicleNumber = details.vehicle_number;
+                if (vehicleNumber) {
+                    dataMap.set(vehicleNumber, {
+                        party: details.party || '-',
+                        bags: details.bags || 0
+                    });
+                }
+            });
+            setArrivalData(dataMap);
+        }, (error) => {
+            console.error("Error fetching arrival records: ", error);
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         const q = query(collection(db, "quality-check_records"), orderBy("timestamp", "desc"));
@@ -73,10 +98,11 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
 
             if (searchTerm.trim() === '') return true;
             const lowercasedSearch = searchTerm.toLowerCase();
+            const uppercasedSearch = searchTerm.toUpperCase();
             const details = record.details as Record<string, any>;
 
             return (
-                details.vehicle_number?.toLowerCase().includes(lowercasedSearch) ||
+                details.vehicle_number?.toUpperCase().includes(uppercasedSearch) ||
                 details.ticket_no?.toLowerCase().includes(lowercasedSearch) ||
                 details.sample_id?.toLowerCase().includes(lowercasedSearch)
             );
@@ -143,10 +169,10 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
-                            <th className="p-3">Timestamp</th>
                             <th className="p-3">Vehicle No</th>
-                            <th className="p-3">Transaction ID</th>
-                            <th className="p-3">Status</th>
+                            <th className="p-3">Party</th>
+                            <th className="p-3">Bags</th>
+                            <th className="p-3">Claim</th>
                             <th className="p-3">Moisture (%)</th>
                             <th className="p-3">Actions</th>
                         </tr>
@@ -157,14 +183,24 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                                 return <tr key={record.id}><td colSpan={6} className="text-center p-4 text-red-500">Invalid record data</td></tr>;
                             }
                             const details = record.details as Record<string, any>;
+                            const vehicleNumber = details.vehicle_number;
+                            const arrivalInfo = arrivalData.get(vehicleNumber);
+
+                            // Calculate claim as sum of quality parameters
+                            const sizeAnalysis4 = parseFloat(details.size_analysis_4) || 0;
+                            const smallMud = parseFloat(details.small_mud_percent) || 0;
+                            const bigMudStones = parseFloat(details.big_mud_stones_percent) || 0;
+                            const damage1 = parseFloat(details.damage_1) || 0;
+                            const physicalDamage2 = parseFloat(details.physical_damage_2) || 0;
+                            const claimTotal = sizeAnalysis4 + smallMud + bigMudStones + damage1 + physicalDamage2;
 
                             return (
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 text-slate-500 whitespace-nowrap">{formatTimestamp(record.timestamp)}</td>
-                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number}</td>
-                                    <td className="p-3 text-slate-600">{details.transaction_id}</td>
-                                    <td className="p-3">{getStatusChip(details.quality_status)}</td>
-                                    <td className="p-3 font-bold text-slate-800">{details.moisture_content_percent || '-'}</td>
+                                    <td className="p-3 font-medium text-slate-800">{vehicleNumber?.toUpperCase()}</td>
+                                    <td className="p-3 text-slate-500 whitespace-nowrap">{arrivalInfo?.party || '-'}</td>
+                                    <td className="p-3 text-slate-600">{arrivalInfo?.bags || '-'}</td>
+                                    <td className="p-3 text-slate-800">{claimTotal.toFixed(2)}</td>
+                                    <td className="p-3 text-slate-800">{details.moisture_content_percent || '-'}</td>
                                     <td className="p-3">
                                         <button 
                                             onClick={() => setSelectedRecord(record)} 

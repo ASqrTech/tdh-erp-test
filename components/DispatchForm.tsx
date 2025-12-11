@@ -15,6 +15,7 @@ interface ItemRow {
   name: string;
   type: string;
   quantity: string;
+  weight: string;
 }
 
 export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess }) => {
@@ -32,14 +33,16 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
   }, {});
 
   const [formData, setFormData] = useState<Record<string, any>>(initialFormData);
-  const [items, setItems] = useState<ItemRow[]>([{ id: Date.now(), name: '', type: '', quantity: '' }]);
+  const [items, setItems] = useState<ItemRow[]>([{ id: Date.now(), name: '', type: '', quantity: '', weight: '' }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [driverNameManuallyEdited, setDriverNameManuallyEdited] = useState(false);
 
   // IN-mode vehicles
   const [inVehicles, setInVehicles] = useState<string[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [vehicleDriverMap, setVehicleDriverMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     let mounted = true;
@@ -69,14 +72,20 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
         const unsub = onSnapshot(q, snapshot => {
           if (!mounted) return;
           const list: string[] = [];
+          const driverMap = new Map<string, string>();
           snapshot.docs.forEach(doc => {
             const d = doc.data();
             const details = (d && (d.details || d)) as Record<string, any>;
             const gateMode = String(details?.gate_mode ?? '').toLowerCase();
             const vehicleNum = details?.vehicle_number;
-            if (vehicleNum && typeof vehicleNum === 'string' && gateMode === 'in') list.push(vehicleNum.trim());
+            const driverName = details?.driver_name || '';
+            if (vehicleNum && typeof vehicleNum === 'string' && gateMode === 'in') {
+              list.push(vehicleNum.trim());
+              if (driverName) driverMap.set(vehicleNum.trim(), driverName);
+            }
           });
           setInVehicles(Array.from(new Set(list)).sort((a, b) => a.localeCompare(b)));
+          setVehicleDriverMap(driverMap);
           setVehiclesLoading(false);
         }, err => {
           console.error('arrival_records listen error', err);
@@ -101,13 +110,21 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
     };
   }, [getInModeVehicles]);
 
+  // Auto-populate driver name when vehicle is selected (only if not manually edited)
+  useEffect(() => {
+    if (formData.vehicle_number && !driverNameManuallyEdited) {
+      const driverName = vehicleDriverMap.get(formData.vehicle_number) || '';
+      setFormData(prev => ({ ...prev, driver_name: driverName }));
+    }
+  }, [formData.vehicle_number, vehicleDriverMap, driverNameManuallyEdited]);
+
   // helpers
   const setField = (name: string, value: any) => setFormData(prev => ({ ...prev, [name]: value }));
 
   const handleItemChange = (id: number, field: keyof ItemRow, value: string) =>
     setItems(prev => prev.map(it => it.id === id ? { ...it, [field]: value } : it));
 
-  const addItem = () => setItems(prev => [...prev, { id: Date.now(), name: '', type: '', quantity: '' }]);
+  const addItem = () => setItems(prev => [...prev, { id: Date.now(), name: '', type: '', quantity: '', weight: '' }]);
   const removeItem = (id: number) => setItems(prev => prev.length > 1 ? prev.filter(it => it.id !== id) : prev);
 
   const sanitizeName = (s: string) => s.replace(/[^A-Za-z0-9\s.\-']/g, '').replace(/\s{2,}/g, ' ').trim();
@@ -138,29 +155,30 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
       gross = sanitizeInteger(gross);
       tare = sanitizeInteger(tare);
 
-      if (gross === '') throw new Error('Gross weight (In Weight) is required and must be an integer.');
-      if (tare === '') throw new Error('Tare weight (Out Weight) is required and must be an integer.');
-
-      // no_of_bags must be integer (store as string)
-      const nBags = sanitizeInteger(String(formData.no_of_bags ?? ''));
-      if (nBags === '') throw new Error('No of bags is required and must be an integer.');
+      if (gross === '') throw new Error('In weight (In Weight) is required and must be an integer.');
+      if (tare === '') throw new Error('Out weight (Out Weight) is required and must be an integer.');
 
       // items: map to item_1_name / item_1_quantity ... store strings
       const validItems = items
-        .map(it => ({ name: String(it.name || '').trim(), quantity: sanitizeInteger(it.quantity || ''), type: String(it.type || '').trim() }))
-        .filter(it => it.name && it.quantity);
+        .map(it => ({ 
+          name: String(it.name || '').trim(), 
+          quantity: sanitizeInteger(it.quantity || ''), 
+          type: String(it.type || '').trim(),
+          weight: sanitizeInteger(it.weight || '')
+        }))
+        .filter(it => it.name && it.quantity && it.weight);
 
-      if (validItems.length === 0) throw new Error('Add at least one valid item (name + quantity).');
+      if (validItems.length === 0) throw new Error('Add at least one valid item (name, quantity, and weight).');
 
       // Build details map exactly like your DB sample
       const details: Record<string, any> = {
         client_name: client,
         destination: destination,
+        driver_name: String(formData.driver_name || '').trim(),
         gross_weight: gross, // string
         tare_weight: tare,   // string
-        no_of_bags: nBags,
         note: String(formData.note ?? '').trim(),
-        vehicle_number: vehicle.toLowerCase(),
+        vehicle_number: vehicle.toUpperCase(),
         // other fields will be filled below (item_N_name / item_N_quantity)
       };
 
@@ -169,6 +187,9 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
         const i = idx + 1;
         details[`item_${i}_name`] = it.name;
         details[`item_${i}_quantity`] = it.quantity;
+        details[`item_${i}_weight`] = it.weight;
+        const total = (parseFloat(it.quantity) || 0) * (parseFloat(it.weight) || 0);
+        details[`item_${i}_total`] = total.toFixed(2);
         // optionally include type as item_N_type
         if (it.type) details[`item_${i}_type`] = it.type;
       });
@@ -178,7 +199,8 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
 
       setSuccess('Dispatch record submitted successfully!');
       setFormData(initialFormData);
-      setItems([{ id: Date.now(), name: '', type: '', quantity: '' }]);
+      setItems([{ id: Date.now(), name: '', type: '', quantity: '', weight: '' }]);
+      setDriverNameManuallyEdited(false);
       onSubmissionSuccess();
     } catch (err: any) {
       setError(err?.message || 'Unexpected error');
@@ -193,14 +215,19 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
   const netKg = Math.max(0, grossInt - tareInt);
   const netQuintal = (netKg / 100).toFixed(2);
 
-  // render fields - vehicle_number rendered as dropdown
-  const mainFields = stageConfig.formFields.filter(f => !f.name.startsWith('item'));
+  // render fields - vehicle_number rendered as dropdown, filter out no_of_bags
+  const mainFields = stageConfig.formFields.filter(f => !f.name.startsWith('item') && f.name !== 'no_of_bags');
+  
+  // Split fields into sections: before weight_heading and from weight_heading onwards
+  const weightHeadingIndex = mainFields.findIndex(f => f.name === 'weight_heading');
+  const fieldsBeforeWeight = weightHeadingIndex >= 0 ? mainFields.slice(0, weightHeadingIndex) : mainFields;
+  const fieldsFromWeight = weightHeadingIndex >= 0 ? mainFields.slice(weightHeadingIndex) : [];
 
   const getInputProps = (name: string) => {
     if (name === 'destination' || name === 'client_name') {
       return { onChange: (e: React.ChangeEvent<HTMLInputElement>) => setField(name, sanitizeName(e.target.value)) };
     }
-    if (['gross_weight', 'tare_weight', 'in_weight', 'out_weight', 'no_of_bags'].includes(name)) {
+    if (['gross_weight', 'tare_weight', 'in_weight', 'out_weight'].includes(name)) {
       return { inputMode: 'numeric', step: '1', onChange: (e: React.ChangeEvent<HTMLInputElement>) => setField(name, sanitizeInteger(e.target.value)) };
     }
     return {};
@@ -217,19 +244,35 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
 
     if (field.name === 'vehicle_number') {
       return (
-        <div key="vehicle_number" className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-          <select
-            name="vehicle_number"
-            value={formData.vehicle_number || ''}
-            onChange={(e) => setField('vehicle_number', e.target.value)}
-            required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-red-500"
-          >
-            <option value="">{vehiclesLoading ? 'Loading IN vehicles...' : 'Select Vehicle'}</option>
-            {inVehicles.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </div>
+        <React.Fragment key="vehicle_number_group">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
+            <select
+              name="vehicle_number"
+              value={formData.vehicle_number || ''}
+              onChange={(e) => setField('vehicle_number', e.target.value)}
+              required
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-red-500"
+            >
+              <option value="">{vehiclesLoading ? 'Loading IN vehicles...' : 'Select Vehicle'}</option>
+              {inVehicles.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Driver Name</label>
+            <input
+              type="text"
+              name="driver_name"
+              value={formData.driver_name || ''}
+              onChange={(e) => {
+                setField('driver_name', e.target.value);
+                setDriverNameManuallyEdited(true);
+              }}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-red-500"
+              placeholder="Auto-filled or enter manually"
+            />
+          </div>
+        </React.Fragment>
       );
     }
 
@@ -276,7 +319,8 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Dispatch Record</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {mainFields.map(renderField)}
+        {/* Dispatch Details section */}
+        {fieldsBeforeWeight.map(renderField)}
 
         {/* Item Details */}
         <div key="item_section">
@@ -289,20 +333,33 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
           </div>
 
           <div className="space-y-4">
-            {items.map(it => (
+            {items.map(it => {
+              const qty = parseFloat(it.quantity) || 0;
+              const wt = parseFloat(it.weight) || 0;
+              const total = qty * wt;
+              
+              return (
               <div key={it.id} className="p-4 border rounded-lg bg-slate-50/50 relative">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Item Name</label>
                     <input type="text" value={it.name} onChange={(e) => handleItemChange(it.id, 'name', e.target.value)} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., Toor Dal" required />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Item Type</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Type</label>
                     <input type="text" value={it.type} onChange={(e) => handleItemChange(it.id, 'type', e.target.value)} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., Raw" required />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Quantity (Qtl)</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Quantity</label>
                     <input type="number" value={it.quantity} onChange={(e) => handleItemChange(it.id, 'quantity', sanitizeInteger(e.target.value))} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., 12" min="0" step="1" required />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Weight (ql)</label>
+                    <input type="number" value={it.weight} onChange={(e) => handleItemChange(it.id, 'weight', sanitizeInteger(e.target.value))} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., 50" min="0" step="1" required />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Total (ql)</label>
+                    <input type="text" value={total.toFixed(2)} className="w-full px-3 py-2 border rounded-md bg-gray-100" readOnly />
                   </div>
                 </div>
 
@@ -314,9 +371,13 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
+
+        {/* Weight Details section */}
+        {fieldsFromWeight.map(renderField)}
 
         {/* Net weight (computed) */}
         <div className="bg-gray-50 p-4 rounded-lg mt-6">
