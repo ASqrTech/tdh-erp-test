@@ -22,6 +22,7 @@ export const QualityCheckForm: React.FC = () => {
   const [pinError, setPinError] = useState('');
   const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Vehicles dropdown
   const [inVehicles, setInVehicles] = useState<string[]>([]);
@@ -38,6 +39,13 @@ export const QualityCheckForm: React.FC = () => {
   useEffect(() => {
     let mounted = true;
     setVehiclesLoading(true);
+
+    // Only attempt to load vehicles if user is authenticated
+    if (!currentUser) {
+      setInVehicles([]);
+      setVehiclesLoading(false);
+      return;
+    }
 
     const loadFromAuthHelper = async () => {
       try {
@@ -104,7 +112,7 @@ export const QualityCheckForm: React.FC = () => {
       mounted = false;
       if (unsubFn) unsubFn();
     };
-  }, [getInModeVehicles]);
+  }, [currentUser, getInModeVehicles]);
 
   // Helper: sanitize integer-only on typing (used in input onChange)
   const handleIntegerInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,7 +185,8 @@ export const QualityCheckForm: React.FC = () => {
     if (verifyPin(pin)) {
       try {
         await submitStageData(qualityStage.id, submittedData);
-        alert('Quality check report submitted successfully!');
+        setSuccessMessage('Quality check report submitted successfully!');
+        setTimeout(() => setSuccessMessage(''), 5000);
         handleCloseModal();
         setSubmittedData(null);
         formRef.current?.reset();
@@ -265,6 +274,13 @@ export const QualityCheckForm: React.FC = () => {
         <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Create New Quality Check Record</h2>
         <p className="mt-1 text-md text-slate-600">Enter the vehicle number and the quality analysis details.</p>
       </div>
+
+      {/* Success Flash Message */}
+      {successMessage && (
+        <div className="max-w-3xl mx-auto mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
+          <p className="text-center font-medium">{successMessage}</p>
+        </div>
+      )}
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
         <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md space-y-4">

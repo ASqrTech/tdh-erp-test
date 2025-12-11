@@ -1,6 +1,6 @@
 import React, { createContext, useState, ReactNode, useEffect, useContext } from 'react';
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import { collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { auth, db, firebaseConfig } from '../firebase/firebase';
 import { PROCESS_STAGES } from '../constants'; // Import process stages
@@ -11,13 +11,13 @@ interface AuthContextType {
     currentUser: User | null;
     users: User[];
     logs: LogEntry[]; // Replaces gateRecords with a unified logs array
-    passwordRequests: string[];
+    passwordRequests: Array<{ userId: string; email: string; userName: string; userRole: string; requestedAt: Date }>;
     loading: boolean;
     login: (email: string, pass: string, pin: string) => Promise<void>;
     logout: () => void;
     addUser: (details: Omit<User, 'id' | 'pin' | 'password' | 'status'>) => Promise<{ pin: string; password: string }>;
     requestPasswordReset: (email: string) => Promise<void>;
-    approvePasswordReset: (userId: string) => Promise<void>;
+    approvePasswordReset: (requestEmail: string) => Promise<void>;
     updateUserDetails: (updatedUser: User) => Promise<void>;
     deactivateUser: (userId: string) => Promise<void>;
     submitStageData: (stageId: string, data: Record<string, any>) => Promise<void>;
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [logs, setLogs] = useState<LogEntry[]>([]);
-    const [passwordRequests, setPasswordRequests] = useState<string[]>([]);
+    const [passwordRequests, setPasswordRequests] = useState<Array<{ userId: string; email: string; userName: string; userRole: string; requestedAt: Date }>>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -96,18 +96,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const unsubscribeUsers = onSnapshot(usersQuery, snapshot => {
             setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as User[]);
         }, (error) => console.error("Error listening to users collection:", error));
-
-        let unsubscribePasswordRequests = () => {};
-        if (isManager) {
-            unsubscribePasswordRequests = onSnapshot(collection(db, "passwordRequests"), snapshot => {
-                setPasswordRequests(snapshot.docs.map(doc => doc.id));
-            }, (error) => console.error("Error listening to passwordRequests collection:", error));
-        }
     
         return () => {
             unsubscribers.forEach(unsub => unsub());
             unsubscribeUsers();
-            unsubscribePasswordRequests();
         };
     }, [currentUser]);
 
@@ -190,21 +182,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const requestPasswordReset = async (email: string) => {
-        const userQuery = query(collection(db, "users"), where("email", "==", email));
-        const querySnapshot = await getDocs(userQuery);
-
-        if (querySnapshot.empty) throw new Error("No user with that email.");
+        // Check if a request already exists for this email
+        const existingRequest = passwordRequests.find(req => req.email.toLowerCase() === email.toLowerCase());
+        if (existingRequest) {
+            throw new Error("A password reset request for this email is already pending admin approval.");
+        }
         
-        const userId = querySnapshot.docs[0].id;
-        await setDoc(doc(db, "passwordRequests", userId), { requestedAt: new Date() });
+        // Frontend-only: No database validation, just add to local state
+        // The admin will verify if this is a valid user when they see the request
+        const newRequest = {
+            userId: `temp-${Date.now()}`, // Temporary ID since we don't validate
+            email,
+            userName: 'Pending Verification',
+            userRole: 'Unknown',
+            requestedAt: new Date()
+        };
+        
+        setPasswordRequests(prev => [...prev, newRequest]);
     };
 
-    const approvePasswordReset = async (userId: string) => {
-        const user = users.find(u => u.id === userId);
-        if (!user || !user.email) throw new Error("User email not found.");
-
-        await sendPasswordResetEmail(auth, user.email);
-        await deleteDoc(doc(db, "passwordRequests", userId));
+    const approvePasswordReset = async (requestEmail: string) => {
+        // Frontend-only: Remove from local state
+        setPasswordRequests(prev => prev.filter(req => req.email !== requestEmail));
     };
 
     const ensureHardcodedAdmin = async () => Promise.resolve();

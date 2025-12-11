@@ -14,6 +14,7 @@ export const StorageForm: React.FC = () => {
     const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedLocationArea, setSelectedLocationArea] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     const locationSubOptions: Record<string, string[]> = {
         Kallam: ['1', '2', '3', '4', '5'],
@@ -52,7 +53,8 @@ export const StorageForm: React.FC = () => {
         if (verifyPin(pin)) {
             try {
                 await submitStageData(storageStage, submittedData);
-                alert('Storage record submitted successfully!');
+                setSuccessMessage('Storage record submitted successfully!');
+                setTimeout(() => setSuccessMessage(''), 5000);
                 handleCloseModal();
                 setSubmittedData(null);
                 formRef.current?.reset();
@@ -79,6 +81,14 @@ export const StorageForm: React.FC = () => {
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Create New Storage Record</h2>
                 <p className="mt-1 text-md text-slate-600">Enter the storage details for the received material.</p>
             </div>
+
+            {/* Success Flash Message */}
+            {successMessage && (
+                <div className="max-w-2xl mx-auto mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
+                    <p className="text-center font-medium">{successMessage}</p>
+                </div>
+            )}
+
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
                 <div className="max-w-2xl mx-auto">
                     <div className="bg-white p-6 rounded-lg shadow-md space-y-4">

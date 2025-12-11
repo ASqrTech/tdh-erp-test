@@ -11,6 +11,7 @@ export const BinOperationForm: React.FC = () => {
     const [pinError, setPinError] = useState('');
     const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const binOpStage = PROCESS_STAGES.find(stage => stage.id === 'bin_operation');
     if (!binOpStage) return <p className="text-center text-red-500">Error: Bin Operation stage configuration not found.</p>;
@@ -45,7 +46,8 @@ export const BinOperationForm: React.FC = () => {
         if (verifyPin(pin)) {
             try {
                 await submitStageData(binOpStage, submittedData);
-                alert('Bin operation record submitted successfully!');
+                setSuccessMessage('Bin operation record submitted successfully!');
+                setTimeout(() => setSuccessMessage(''), 5000);
                 handleCloseModal();
                 setSubmittedData(null);
                 formRef.current?.reset();
@@ -71,6 +73,14 @@ export const BinOperationForm: React.FC = () => {
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Manage Bin Operations</h2>
                 <p className="mt-1 text-md text-slate-600">Update the status of bins and manage material flow.</p>
             </div>
+
+            {/* Success Flash Message */}
+            {successMessage && (
+                <div className="max-w-2xl mx-auto mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
+                    <p className="text-center font-medium">{successMessage}</p>
+                </div>
+            )}
+
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
                 <div className="max-w-2xl mx-auto">
                     <div className="bg-white p-6 rounded-lg shadow-md space-y-4">

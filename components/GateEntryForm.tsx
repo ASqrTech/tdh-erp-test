@@ -30,6 +30,7 @@ export const GateEntryForm: React.FC = () => {
   const [pinError, setPinError] = useState('');
   const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string>('');
 
   // Central controlled form state
   const [formState, setFormState] = useState<Record<string, any>>({});
@@ -251,6 +252,9 @@ export const GateEntryForm: React.FC = () => {
 
       submitStageData(arrivalStage.id, submittedData);
 
+      setSuccessMessage('Details submitted successfully!');
+      setTimeout(() => setSuccessMessage(''), 5000);
+
       handleCloseModal();
       setSubmittedData(null);
       formRef.current?.reset();
@@ -293,6 +297,12 @@ export const GateEntryForm: React.FC = () => {
         <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Gate Entry Record</h2>
         <p className="mt-1 text-md text-slate-600">Log a new vehicle entry or exit.</p>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
+          {successMessage}
+        </div>
+      )}
 
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex justify-center mb-6">

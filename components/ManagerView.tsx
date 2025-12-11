@@ -169,24 +169,44 @@ export const ManagerView: React.FC = () => {
                 <div className="bg-white p-6 rounded-lg shadow-md">
                      <h3 className="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Password Reset Requests ({safePasswordRequests.length})</h3>
                      <div className="space-y-3">
-                         {safePasswordRequests.length > 0 ? safePasswordRequests.map(userId => {
-                             const user = safeUsers.find(u => u.id === userId);
+                         {safePasswordRequests.length > 0 ? safePasswordRequests.map(request => {
+                             // Find user by email
+                             const user = safeUsers.find(u => u.email?.toLowerCase() === request.email.toLowerCase());
+                             
                              return (
-                                <div key={userId} className="flex justify-between items-center p-3 bg-yellow-50 rounded-md">
-                                    <div>
-                                        <p className="font-semibold text-yellow-800">{user?.name || 'Unknown User'}</p>
-                                        <p className="text-sm text-yellow-600">User ID: {userId}</p>
+                                <div key={request.email} className="flex justify-between items-center p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-yellow-900">{user ? user.name : 'User Not Found'}</p>
+                                        <p className="text-sm text-yellow-700 mt-1">Email: {request.email}</p>
+                                        {user && <p className="text-sm text-yellow-600">Role: {user.role}</p>}
+                                        <p className="text-xs text-yellow-600 mt-1">
+                                            Requested: {new Date(request.requestedAt).toLocaleString()}
+                                        </p>
                                     </div>
-                                    <button 
-                                        onClick={() => approvePasswordReset(userId)}
-                                        className="bg-green-500 text-white px-3 py-1 text-sm rounded-md font-semibold hover:bg-green-600 transition"
-                                    >
-                                        Approve & Reset
-                                    </button>
+                                    <div className="flex gap-2">
+                                        {user ? (
+                                            <button 
+                                                onClick={() => {
+                                                    approvePasswordReset(request.email);
+                                                    openDetailsModal(user, 'edit');
+                                                }}
+                                                className="bg-blue-500 text-white px-4 py-2 text-sm rounded-md font-semibold hover:bg-blue-600 transition shadow"
+                                            >
+                                                Change PIN
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => approvePasswordReset(request.email)}
+                                                className="bg-red-500 text-white px-4 py-2 text-sm rounded-md font-semibold hover:bg-red-600 transition shadow"
+                                            >
+                                                Dismiss
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                             )
+                             );
                          }) : (
-                            <p className="text-slate-500 text-center py-8">No pending requests.</p>
+                            <p className="text-slate-500 text-center py-8">No pending password reset requests.</p>
                          )}
                      </div>
                 </div>

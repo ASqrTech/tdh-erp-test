@@ -13,6 +13,7 @@ export const WeighingForm: React.FC = () => {
     const [pinError, setPinError] = useState('');
     const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     // vehicle list for dropdown
     const [inVehicles, setInVehicles] = useState<string[]>([]);
@@ -27,6 +28,13 @@ export const WeighingForm: React.FC = () => {
     useEffect(() => {
         let mounted = true;
         setVehiclesLoading(true);
+
+        // Only attempt to load vehicles if user is authenticated
+        if (!currentUser) {
+            setInVehicles([]);
+            setVehiclesLoading(false);
+            return;
+        }
 
         const loadFromAuthHelper = async () => {
             try {
@@ -99,7 +107,7 @@ export const WeighingForm: React.FC = () => {
             mounted = false;
             if (unsubFn) unsubFn();
         };
-    }, [getInModeVehicles]);
+    }, [currentUser, getInModeVehicles]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -127,7 +135,8 @@ export const WeighingForm: React.FC = () => {
         if (verifyPin(pin)) {
             try {
                 await submitStageData(weighingStage.id, submittedData);
-                alert('Weighing record submitted successfully!');
+                setSuccessMessage('Weighing record submitted successfully!');
+                setTimeout(() => setSuccessMessage(''), 5000);
                 handleCloseModal();
                 setSubmittedData(null);
                 formRef.current?.reset();
@@ -159,6 +168,13 @@ export const WeighingForm: React.FC = () => {
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Create New Weighing Record</h2>
                 <p className="mt-1 text-md text-slate-600">Enter the weighing details to log a new entry.</p>
             </div>
+
+            {/* Success Flash Message */}
+            {successMessage && (
+                <div className="max-w-2xl mx-auto mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
+                    <p className="text-center font-medium">{successMessage}</p>
+                </div>
+            )}
 
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
                 <div className="max-w-2xl mx-auto">

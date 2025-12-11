@@ -19,7 +19,7 @@ interface ItemRow {
 }
 
 export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess }) => {
-  const { submitStageData, getInModeVehicles } = useAuth() as any;
+  const { currentUser, submitStageData, getInModeVehicles } = useAuth() as any;
 
   const stageConfig = PROCESS_STAGES.find(stage => stage.id === 'dispatch') as any;
   if (!stageConfig) {
@@ -47,6 +47,13 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
   useEffect(() => {
     let mounted = true;
     setVehiclesLoading(true);
+
+    // Only attempt to load vehicles if user is authenticated
+    if (!currentUser) {
+      setInVehicles([]);
+      setVehiclesLoading(false);
+      return;
+    }
 
     const loadFromAuth = async () => {
       try {
@@ -108,7 +115,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
       mounted = false;
       if (unsubFn) unsubFn();
     };
-  }, [getInModeVehicles]);
+  }, [currentUser, getInModeVehicles]);
 
   // Auto-populate driver name when vehicle is selected (only if not manually edited)
   useEffect(() => {
@@ -198,6 +205,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
       await submitStageData('dispatch', details);
 
       setSuccess('Dispatch record submitted successfully!');
+      setTimeout(() => setSuccess(null), 5000);
       setFormData(initialFormData);
       setItems([{ id: Date.now(), name: '', type: '', quantity: '', weight: '' }]);
       setDriverNameManuallyEdited(false);
@@ -318,6 +326,12 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
     <div className="p-6 bg-white rounded-xl shadow-lg w-full max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Dispatch Record</h2>
 
+      {success && (
+        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
+          {success}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Dispatch Details section */}
         {fieldsBeforeWeight.map(renderField)}
@@ -371,7 +385,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
                   </div>
                 )}
               </div>
-              );
+            );
             })}
           </div>
         </div>
@@ -386,7 +400,6 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
         </div>
 
         {error && <div className="text-red-500 font-medium mt-4">Error: {error}</div>}
-        {success && <div className="text-green-500 font-medium mt-4">{success}</div>}
 
         <button type="submit" disabled={isSubmitting} className="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-md hover:bg-red-700 disabled:bg-red-400 transition-colors duration-300 mt-6">
           {isSubmitting ? 'Submitting...' : 'Submit Dispatch Record'}

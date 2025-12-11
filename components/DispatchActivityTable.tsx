@@ -1,22 +1,47 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext'; // Using the central auth context is the correct pattern.
+import { useAuth } from '../contexts/AuthContext';
 import type { LogEntry } from '../types';
 import { DispatchDetailsModal } from './DispatchDetailsModal';
 import { db } from '../firebase/firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 
 type TimeFilter = '24h' | 'week' | 'month' | 'custom';
 
 export const DispatchActivityTable: React.FC = () => {
-    // All data is provided by the central 'logs' array from the AuthContext.
-    const { logs } = useAuth();
-
+    const [dispatchRecords, setDispatchRecords] = useState<LogEntry[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
     const [weighingRecords, setWeighingRecords] = useState<LogEntry[]>([]);
+
+    // Fetch dispatch records from dispatch_records collection
+    useEffect(() => {
+        const q = query(collection(db, 'dispatch_records'), orderBy('timestamp', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const records: LogEntry[] = snapshot.docs.map(doc => {
+                const data = doc.data();
+                const timestamp = data.timestamp instanceof Timestamp
+                    ? data.timestamp.toDate().toISOString()
+                    : data.timestamp;
+                
+                return {
+                    id: doc.id,
+                    timestamp: timestamp,
+                    userId: data.userId,
+                    userName: data.userName,
+                    action: data.action || 'dispatch_RECORDED',
+                    details: data.details || data,
+                } as LogEntry;
+            });
+            setDispatchRecords(records);
+        }, (error) => {
+            console.error('Error fetching dispatch records:', error);
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     // Fetch weighing records to get out_weight data
     useEffect(() => {
@@ -61,8 +86,7 @@ export const DispatchActivityTable: React.FC = () => {
     );
 
     const filteredRecords = useMemo(() => {
-        // The logic is simple: apply UI filters to the logs provided by the AuthContext.
-        return (logs || []).filter(record => {
+        return (dispatchRecords || []).filter(record => {
             if (!record.timestamp) return false;
 
             const recordDate = new Date(record.timestamp);
@@ -109,7 +133,7 @@ export const DispatchActivityTable: React.FC = () => {
                 (details.ticket_number?.toString().toLowerCase().includes(lowercasedSearch))
             );
         });
-    }, [logs, searchTerm, timeFilter, customStartDate, customEndDate]);
+    }, [dispatchRecords, searchTerm, timeFilter, customStartDate, customEndDate]);
 
     const formatTimestamp = (isoString: string) => {
         try {

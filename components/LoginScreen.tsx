@@ -8,15 +8,16 @@ const LoginScreen = () => {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [showReset, setShowReset] = useState(false);
-  // Corrected state variable name for clarity and consistency
   const [resetEmail, setResetEmail] = useState(""); 
   const [resetMessage, setResetMessage] = useState("");
+  const [flashMessage, setFlashMessage] = useState("");
 
   const { login, requestPasswordReset } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setFlashMessage("");
     try {
       await login(identifier, password, pin);
     } catch (error) {
@@ -28,14 +29,20 @@ const LoginScreen = () => {
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setResetMessage("");
+    setError("");
     try {
-      // Correctly pass the email to the reset function
       await requestPasswordReset(resetEmail);
-      setResetMessage("If an account exists for this email, a password reset link has been sent.");
+      // Close modal and show flash message
+      setShowReset(false);
+      setResetEmail("");
+      setResetMessage("");
+      setFlashMessage("Password reset request sent to admin successfully!");
+      
+      // Auto-hide flash message after 5 seconds
+      setTimeout(() => setFlashMessage(""), 5000);
     } catch (error) { 
       console.error("Password reset request failed:", error);
-      // Provide a generic message for security reasons
-      setResetMessage("If an account exists for this email, a password reset link has been sent."); 
+      setResetMessage(error.message || "Failed to submit password reset request. Please try again.");
     }
   };
 
@@ -46,6 +53,13 @@ const LoginScreen = () => {
                 <h1 className="text-3xl font-bold text-slate-800">A Square Technologies ERP</h1>
                 <p className="text-slate-500 mt-2">Client: Tenali Double Horse</p>
             </div>
+
+            {/* Flash Message */}
+            {flashMessage && (
+                <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
+                    <p className="text-center font-medium">{flashMessage}</p>
+                </div>
+            )}
 
             <div className="bg-white p-8 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-semibold text-center text-slate-700 mb-6">Employee Login</h2>
