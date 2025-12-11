@@ -21,7 +21,7 @@ interface ItemRow {
 export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess }) => {
   const { submitStageData, getInModeVehicles } = useAuth() as any;
 
-  const stageConfig = PROCESS_STAGES.find(stage => stage.id === 'dispatch');
+  const stageConfig = PROCESS_STAGES.find(stage => stage.id === 'dispatch') as any;
   if (!stageConfig) {
     return <div className="text-red-500">Error: Dispatch stage configuration not found.</div>;
   }
@@ -228,7 +228,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
       return { onChange: (e: React.ChangeEvent<HTMLInputElement>) => setField(name, sanitizeName(e.target.value)) };
     }
     if (['gross_weight', 'tare_weight', 'in_weight', 'out_weight'].includes(name)) {
-      return { inputMode: 'numeric', step: '1', onChange: (e: React.ChangeEvent<HTMLInputElement>) => setField(name, sanitizeInteger(e.target.value)) };
+      return { inputMode: 'numeric' as const, step: '1' as const, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setField(name, sanitizeInteger(e.target.value)) };
     }
     return {};
   };

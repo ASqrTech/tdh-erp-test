@@ -61,10 +61,8 @@ export const DispatchActivityTable: React.FC = () => {
     );
 
     const filteredRecords = useMemo(() => {
-        // The logic is simple: filter the unified logs for dispatch records, then apply UI filters.
-        const dispatchRecords = (logs || []).filter(log => log.stageId === 'dispatch');
-
-        return (dispatchRecords || []).filter(record => {
+        // The logic is simple: apply UI filters to the logs provided by the AuthContext.
+        return (logs || []).filter(record => {
             if (!record.timestamp) return false;
 
             const recordDate = new Date(record.timestamp);
