@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase/firebase';
-import { collection, query, orderBy, onSnapshot, Timestamp, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import type { User, LogEntry } from '../types';
 import { QualityCheckDetailsModal } from './QualityCheckDetailsModal';
 
@@ -14,6 +14,10 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const canManageRecords = currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN';
 
     // Fetch arrival records to get party and bags info
     useEffect(() => {
@@ -65,9 +69,12 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                     userName: data.userName,
                     action: data.action || 'quality-check_RECORDED',
                     details: data.details || data,
+                    deleted: data.deleted === true, // Track deleted state
                 } as LogEntry;
             });
-            setQualityRecords(records);
+            // For managers: filter out deleted records. For admins: show all records
+            const isAdmin = currentUser?.role === 'ADMIN';
+            setQualityRecords(isAdmin ? records : records.filter(r => !r.deleted));
         }, (error) => {
             console.error("Error fetching quality check records: ", error);
         });
@@ -77,6 +84,9 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
 
     const filteredRecords = useMemo(() => {
         return (qualityRecords || []).filter(record => {
+            // Managers should never see deleted records
+            if (currentUser?.role === 'MANAGER' && record.deleted) return false;
+            
             if (!record.timestamp || typeof record.details !== 'object') return false;
 
             const recordDate = new Date(record.timestamp);
@@ -117,9 +127,45 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                 details.sample_id?.toLowerCase().includes(lowercasedSearch)
             );
         });
-    }, [qualityRecords, searchTerm, timeFilter, customStartDate, customEndDate]);
+    }, [qualityRecords, searchTerm, timeFilter, customStartDate, customEndDate, currentUser?.role]);
 
     const formatTimestamp = (isoString: string) => new Date(isoString).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+    const toggleSelection = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredRecords.length && filteredRecords.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredRecords.map(r => r.id)));
+        }
+    };
+
+    const deleteRecords = async () => {
+        if (selectedIds.size === 0) return;
+        
+        setIsUpdating(true);
+        try {
+            const updatePromises = Array.from(selectedIds).map(id => 
+                updateDoc(doc(db, 'quality-check_records', id), { deleted: true })
+            );
+            await Promise.all(updatePromises);
+            setSelectedIds(new Set());
+        } catch (error) {
+            console.error('Error deleting records:', error);
+            alert('Failed to delete records. Please try again.');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     const FilterButton: React.FC<{ filter: TimeFilter; label: string }> = ({ filter, label }) => (
         <button
@@ -176,9 +222,33 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
             )}
 
             <div className="overflow-x-auto">
+                {canManageRecords && filteredRecords.length > 0 && (
+                    <div className="mb-4 flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-700">
+                            {selectedIds.size} selected
+                        </span>
+                        <button
+                            onClick={deleteRecords}
+                            disabled={selectedIds.size === 0 || isUpdating}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                            {isUpdating ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </div>
+                )}
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
+                            {canManageRecords && (
+                                <th className="p-3 w-12">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.size === filteredRecords.length && filteredRecords.length > 0}
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                                    />
+                                </th>
+                            )}
                             <th className="p-3">Vehicle No</th>
                             <th className="p-3">Party</th>
                             <th className="p-3">Bags</th>
@@ -190,7 +260,7 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                     <tbody>
                         {filteredRecords.length > 0 ? filteredRecords.map(record => {
                             if (typeof record.details !== 'object' || record.details === null) {
-                                return <tr key={record.id}><td colSpan={6} className="text-center p-4 text-red-500">Invalid record data</td></tr>;
+                                return <tr key={record.id}><td colSpan={canManageRecords ? 7 : 6} className="text-center p-4 text-red-500">Invalid record data</td></tr>;
                             }
                             const details = record.details as Record<string, any>;
                             const vehicleNumber = details.vehicle_number;
@@ -206,7 +276,20 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
 
                             return (
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 font-medium text-slate-800">{vehicleNumber?.toUpperCase()}</td>
+                                    {canManageRecords && (
+                                        <td className="p-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(record.id)}
+                                                onChange={() => toggleSelection(record.id)}
+                                                className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                                            />
+                                        </td>
+                                    )}
+                                    <td className="p-3 font-medium text-slate-800">
+                                        {vehicleNumber?.toUpperCase()}
+                                        {record.deleted && <span className="ml-2 text-xs text-red-600 font-semibold">(deleted)</span>}
+                                    </td>
                                     <td className="p-3 text-slate-500 whitespace-nowrap">{arrivalInfo?.party || '-'}</td>
                                     <td className="p-3 text-slate-600">{arrivalInfo?.bags || '-'}</td>
                                     <td className="p-3 text-slate-800">{claimTotal.toFixed(2)}</td>
@@ -223,7 +306,7 @@ export const QualityCheckActivityTable: React.FC<{ currentUser: User }> = ({ cur
                             );
                         }) : (
                             <tr>
-                                <td colSpan={6} className="text-center p-8 text-slate-500">No inspections found for the selected criteria.</td>
+                                <td colSpan={canManageRecords ? 7 : 6} className="text-center p-8 text-slate-500">No inspections found for the selected criteria.</td>
                             </tr>
                         )}
                     </tbody>

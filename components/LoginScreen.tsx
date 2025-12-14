@@ -4,8 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const LoginScreen = () => {
   const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [pin, setPin] = useState("");
+  const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [error, setError] = useState("");
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState(""); 
@@ -14,12 +13,39 @@ const LoginScreen = () => {
 
   const { login, requestPasswordReset } = useAuth();
 
+  const handlePinChange = (index: number, value: string) => {
+    // Only allow digits
+    if (!/^\d*$/.test(value)) return;
+    
+    const newPinDigits = [...pinDigits];
+    newPinDigits[index] = value.slice(-1); // Only keep last character
+    setPinDigits(newPinDigits);
+    
+    // Auto-focus next input
+    if (value && index < 3) {
+      const nextInput = document.getElementById(`pin-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handlePinKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !pinDigits[index] && index > 0) {
+      const prevInput = document.getElementById(`pin-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setFlashMessage("");
+    const pin = pinDigits.join("");
+    if (pin.length !== 4) {
+      setError("Please enter a 4-digit PIN.");
+      return;
+    }
     try {
-      await login(identifier, password, pin);
+      await login(identifier, pin);
     } catch (error) {
       console.error("Failed to login:", error);
       setError("Invalid credentials. Please try again.");
@@ -50,8 +76,8 @@ const LoginScreen = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
         <div className="w-full max-w-md">
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-slate-800">A Square Technologies ERP</h1>
-                <p className="text-slate-500 mt-2">Client: Tenali Double Horse</p>
+                <h1 className="text-3xl font-bold text-slate-800">TDH ERP SYSTEM</h1>
+                <p className="text-slate-500 mt-2">Powered by A Square Technologies</p>
             </div>
 
             {/* Flash Message */}
@@ -66,19 +92,19 @@ const LoginScreen = () => {
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="identifier">
-                            User ID or Email
+                            Email
                         </label>
                         <input
                             id="identifier"
-                            type="text"
+                            type="email"
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                            placeholder="e.g., 'manager' or 'user@example.com'"
+                            placeholder="e.g., user@tdherp.com"
                             required
                         />
                     </div>
-                    <div>
+                    {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">
                             Password
                         </label>
@@ -91,20 +117,26 @@ const LoginScreen = () => {
                             placeholder="Your password"
                             required
                         />
-                    </div>
+                    </div> */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pin">
-                            Security PIN
+                        <label className="block text-sm font-medium text-gray-700 mb-4" htmlFor="pin">
+                            PIN
                         </label>
-                        <input
-                            id="pin"
-                            type="password"
-                            value={pin}
-                            onChange={(e) => setPin(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                            placeholder="4-digit PIN"
-                            required
-                        />
+                        <div className="flex justify-center gap-3">
+                            {[0, 1, 2, 3].map((index) => (
+                                <input
+                                    key={index}
+                                    id={`pin-${index}`}
+                                    type="password"
+                                    maxLength="1"
+                                    value={pinDigits[index]}
+                                    onChange={(e) => handlePinChange(index, e.target.value)}
+                                    onKeyDown={(e) => handlePinKeyDown(index, e)}
+                                    className="w-14 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 transition"
+                                    placeholder="•"
+                                />
+                            ))}
+                        </div>
                     </div>
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     <button
@@ -116,7 +148,7 @@ const LoginScreen = () => {
                 </form>
                 <div className="text-center mt-4">
                   <button onClick={() => setShowReset(true)} className="text-sm text-red-600 hover:underline">
-                        Forgot Password?
+                        Forgot Pin?
                     </button>
                 </div>
             </div>
@@ -124,10 +156,10 @@ const LoginScreen = () => {
          {showReset && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm animate-fade-in">
-                    <h3 className="text-lg font-semibold mb-4">Request Password Reset</h3>
+                    <h3 className="text-lg font-semibold mb-4">Request Pin Reset</h3>
                     <form onSubmit={handlePasswordReset}>
                         {/* Corrected the user-facing message to ask for an email address */}
-                        <p className="text-sm text-gray-600 mb-4">Enter your email address to receive a password reset link.</p>
+                        <p className="text-sm text-gray-600 mb-4">Enter your email address to reset pin.</p>
                         <input
                             type="email" // Use type="email" for better validation
                             value={resetEmail}

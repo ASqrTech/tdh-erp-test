@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase/firebase';
-import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import type { User, LogEntry } from '../types';
 import { WeighingDetailsModal } from './WeighingDetailsModal'; // Ensure this is the correct modal
 
@@ -16,6 +16,10 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const canManageRecords = currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN';
 
     useEffect(() => {
         // Guard: Don't set up listener if user is not authenticated
@@ -40,9 +44,12 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                     userName: data.userName,
                     action: data.action || 'weighing_RECORDED',
                     details: data.details || data, // Ensure details object is preserved
+                    deleted: data.deleted === true, // Track deleted state
                 } as LogEntry;
             });
-            setWeighingRecords(records);
+            // For managers: filter out deleted records. For admins: show all records
+            const isAdmin = currentUser?.role === 'ADMIN';
+            setWeighingRecords(isAdmin ? records : records.filter(r => !r.deleted));
         }, (error) => {
             console.error("Error fetching weighing records: ", error);
         });
@@ -52,6 +59,9 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
 
     const filteredRecords = useMemo(() => {
         return (weighingRecords || []).filter(record => {
+            // Managers should never see deleted records
+            if (currentUser?.role === 'MANAGER' && record.deleted) return false;
+            
             if (!record.timestamp || typeof record.details !== 'object') return false;
 
             const recordDate = new Date(record.timestamp);
@@ -91,9 +101,45 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                 details.ticket_no?.toLowerCase().includes(lowercasedSearch) // Search by ticket number
             );
         });
-    }, [weighingRecords, searchTerm, timeFilter, customStartDate, customEndDate]);
+    }, [weighingRecords, searchTerm, timeFilter, customStartDate, customEndDate, currentUser?.role]);
 
     const formatTimestamp = (isoString: string) => new Date(isoString).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+    const toggleSelection = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredRecords.length && filteredRecords.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredRecords.map(r => r.id)));
+        }
+    };
+
+    const deleteRecords = async () => {
+        if (selectedIds.size === 0) return;
+        
+        setIsUpdating(true);
+        try {
+            const updatePromises = Array.from(selectedIds).map(id => 
+                updateDoc(doc(db, 'weighing_records', id), { deleted: true })
+            );
+            await Promise.all(updatePromises);
+            setSelectedIds(new Set());
+        } catch (error) {
+            console.error('Error deleting records:', error);
+            alert('Failed to delete records. Please try again.');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     const FilterButton: React.FC<{ filter: TimeFilter; label: string }> = ({ filter, label }) => (
         <button
@@ -139,9 +185,33 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
             )}
 
             <div className="overflow-x-auto">
+                {canManageRecords && filteredRecords.length > 0 && (
+                    <div className="mb-4 flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-700">
+                            {selectedIds.size} selected
+                        </span>
+                        <button
+                            onClick={deleteRecords}
+                            disabled={selectedIds.size === 0 || isUpdating}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                            {isUpdating ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </div>
+                )}
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
+                            {canManageRecords && (
+                                <th className="p-3 w-12">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.size === filteredRecords.length && filteredRecords.length > 0}
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                                    />
+                                </th>
+                            )}
                             <th className="p-3">Vehicle No.</th>
                             <th className="p-3">Net Weight (ql)</th>
                             <th className="p-3">Sample Collector</th>
@@ -152,7 +222,7 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                     <tbody>
                         {filteredRecords.length > 0 ? filteredRecords.map(record => {
                             if (typeof record.details !== 'object' || record.details === null) {
-                                return <tr key={record.id}><td colSpan={5} className="text-center p-4 text-red-500">Invalid record data</td></tr>;
+                                return <tr key={record.id}><td colSpan={canManageRecords ? 6 : 5} className="text-center p-4 text-red-500">Invalid record data</td></tr>;
                             }
                             const details = record.details as Record<string, any>;
                             const inWeight = parseFloat(details.in_weight) || 0;
@@ -161,7 +231,20 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
 
                             return (
                                 <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 font-medium text-slate-800">{details.vehicle_number?.toUpperCase()}</td>
+                                    {canManageRecords && (
+                                        <td className="p-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(record.id)}
+                                                onChange={() => toggleSelection(record.id)}
+                                                className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                                            />
+                                        </td>
+                                    )}
+                                    <td className="p-3 font-medium text-slate-800">
+                                        {details.vehicle_number?.toUpperCase()}
+                                        {record.deleted && <span className="ml-2 text-xs text-red-600 font-semibold">(deleted)</span>}
+                                    </td>
                                     <td className="p-3 font-bold text-slate-800">{netWeight > 0 ? netWeight.toFixed(2) : '-'}</td>                                   
                                     <td className="p-3 text-slate-600">{details.sample_collector || '-'}</td>                                    
                                     <td className="p-3 text-slate-600">{details.ticket_no}</td>
@@ -177,7 +260,7 @@ export const WeighingActivityTable: React.FC<{ currentUser: User }> = ({ current
                             );
                         }) : (
                             <tr>
-                                <td colSpan={5} className="text-center p-8 text-slate-500">No entries found for the selected criteria.</td>
+                                <td colSpan={canManageRecords ? 6 : 5} className="text-center p-8 text-slate-500">No entries found for the selected criteria.</td>
                             </tr>
                         )}
                     </tbody>

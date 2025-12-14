@@ -15,7 +15,7 @@ const initialNewEmployeeState = {
 };
 
 export const ManagerView: React.FC = () => {
-    const { currentUser, users, addUser, passwordRequests, approvePasswordReset, updateUserDetails, deactivateUser, logs } = useAuth();
+    const { currentUser, users, addUser, passwordRequests, approvePasswordReset, updateUserDetails, deleteUser, logs } = useAuth();
     
     if (!currentUser) {
         return null;
@@ -74,7 +74,7 @@ export const ManagerView: React.FC = () => {
 
     const confirmDeactivate = () => {
         if (userToDeactivate) {
-            deactivateUser(userToDeactivate.id);
+            deleteUser(userToDeactivate.id);
             setUserToDeactivate(null);
         }
     };
@@ -92,11 +92,12 @@ export const ManagerView: React.FC = () => {
     
         const headers = ["Timestamp", "User ID", "User Name", "Action", "Details"];
         
-        const escapeCsvCell = (cell: string) => {
-            if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
-                return `"${cell.replace(/"/g, '""')}"`;
+        const escapeCsvCell = (cell: any) => {
+            const cellStr = String(cell || '');
+            if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+                return `"${cellStr.replace(/"/g, '""')}"`;
             }
-            return cell;
+            return cellStr;
         };
     
         const csvContent = [
@@ -127,24 +128,30 @@ export const ManagerView: React.FC = () => {
     };
 
     const availableRoles = Object.keys(ROLE_PERMISSIONS).filter(r => r !== 'ADMIN');
-    const safeUsers = users || [];
+    const safeUsers = (users || []).filter(user => {
+        // If current user is MANAGER, hide ADMIN and MANAGER entries
+        if (currentUser?.role === 'MANAGER' && (user.role === 'ADMIN' || user.role === 'MANAGER')) {
+            return false;
+        }
+        return true;
+    });
     const safePasswordRequests = passwordRequests || [];
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 md:gap-0 mb-6">
                  <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Team Management</h2>
-                 <div className="flex items-center space-x-2">
+                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
                     <button 
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 transition"
+                        className="bg-red-600 text-white px-3 sm:px-4 py-2 rounded-md font-semibold hover:bg-red-700 transition text-sm sm:text-base"
                     >
                         Add Employee
                     </button>
                     {currentUser?.role === 'ADMIN' && (
                          <button 
                             onClick={handleDownloadLogs}
-                            className="bg-green-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-green-700 transition flex items-center space-x-2"
+                            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-md font-semibold hover:bg-green-700 transition flex items-center justify-center space-x-2 text-sm sm:text-base"
                         >
                             <DownloadIcon />
                             <span>Logs</span>
@@ -223,6 +230,25 @@ export const ManagerView: React.FC = () => {
                 </div>
             </div>
 
+            {/* Current User/Admin Section at Bottom */}
+            <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Your Information</h3>
+                <div className="space-y-3">
+                    {currentUser && (
+                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-md">
+                            <div>
+                                <p className="font-semibold text-slate-800">{currentUser.name}</p>
+                                <p className="text-sm text-slate-500 capitalize">{currentUser.role.replace(/_/g, ' ').toLowerCase()}</p>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <button onClick={() => openDetailsModal(currentUser, 'view')} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-200 rounded-full transition" aria-label="View Details"><EyeIcon /></button>
+                                <button onClick={() => openDetailsModal(currentUser, 'edit')} className="p-1.5 text-slate-500 hover:text-green-600 hover:bg-slate-200 rounded-full transition" aria-label="Edit User"><PencilIcon /></button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {isAddModalOpen && (
                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md animate-fade-in max-h-[90vh] overflow-y-auto">
@@ -296,12 +322,12 @@ export const ManagerView: React.FC = () => {
             {userToDeactivate && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md animate-fade-in">
-                        <h3 className="text-xl font-bold mb-4 text-slate-800">Confirm Deactivation</h3>
-                        <p className="text-slate-600 mb-6">Are you sure you want to deactivate <span className="font-semibold">{userToDeactivate.name}</span>? They will no longer be able to log in.</p>
+                        <h3 className="text-xl font-bold mb-4 text-slate-800">Confirm Deletion</h3>
+                        <p className="text-slate-600 mb-6">Are you sure you want to delete <span className="font-semibold">{userToDeactivate.name}</span>? This action cannot be undone and they will be permanently removed from the system.</p>
                         <div className="flex justify-end space-x-2">
                             <button onClick={cancelDeactivate} className="px-4 py-2 bg-gray-200 rounded-md font-medium hover:bg-gray-300">Cancel</button>
 
-                            <button onClick={confirmDeactivate} className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700">Deactivate</button>
+                            <button onClick={confirmDeactivate} className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700">Delete</button>
                         </div>
                     </div>
                 </div>

@@ -92,7 +92,8 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
             const gateMode = String(details?.gate_mode ?? '').toLowerCase();
             const vehicleNum = details?.vehicle_number;
             const driverName = details?.driver_name || '';
-            if (vehicleNum && typeof vehicleNum === 'string' && gateMode === 'in') {
+            const isDeleted = d?.deleted === true;
+            if (vehicleNum && typeof vehicleNum === 'string' && gateMode === 'in' && !isDeleted) {
               list.push(vehicleNum.trim());
               if (driverName) driverMap.set(vehicleNum.trim(), driverName);
             }
@@ -153,26 +154,17 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
     setSuccess(null);
 
     try {
-      // Only vehicle_number is required
-      const vehicle = String(formData.vehicle_number || '').trim();
-      const destination = sanitizeName(String(formData.destination || ''));
-      const client = sanitizeName(String(formData.client_name || ''));
+      // All fields are optional
+      const vehicle = String(formData.vehicle_number || '').trim() || 'N/A';
+      const destination = sanitizeName(String(formData.destination || '')) || 'N/A';
+      const client = sanitizeName(String(formData.client_name || '')) || 'N/A';
 
-      if (!vehicle) throw new Error('Vehicle Number required (select an IN vehicle).');
-      if (!destination) throw new Error('Destination required.');
-      if (!client) throw new Error('Client Name required.');
-
-      // sanitize numeric fields to integers and convert to strings (to match DB sample)
-      // gross_weight / tare_weight (DB currently stores strings)
-      // prefer gross_weight/tare_weight from formData, but accept in_weight/out_weight if provided
+      // Sanitize numeric fields, show N/A if empty
       let gross = String(formData.gross_weight ?? formData.in_weight ?? '');
       let tare = String(formData.tare_weight ?? formData.out_weight ?? '');
 
-      gross = sanitizeInteger(gross);
-      tare = sanitizeInteger(tare);
-
-      if (gross === '') throw new Error('In weight (In Weight) is required and must be an integer.');
-      if (tare === '') throw new Error('Out weight (Out Weight) is required and must be an integer.');
+      gross = sanitizeInteger(gross) || 'N/A';
+      tare = sanitizeInteger(tare) || 'N/A';
 
       // items: map to item_1_name / item_1_quantity ... store strings
       const validItems = items
@@ -184,41 +176,42 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
         }))
         .filter(it => it.name && it.quantity && it.weight);
 
-      if (validItems.length === 0) throw new Error('Add at least one valid item (name, quantity, and weight).');
-
       // Build details map exactly like your DB sample
       const details: Record<string, any> = {
         client_name: client,
         destination: destination,
-        driver_name: String(formData.driver_name || '').trim(),
-        gross_weight: gross, // string
-        tare_weight: tare,   // string
-        note: String(formData.note ?? '').trim(),
-        vehicle_number: vehicle.toUpperCase(),
+        driver_name: String(formData.driver_name || '').trim() || 'N/A',
+        gross_weight: gross, // string or N/A
+        tare_weight: tare,   // string or N/A
+        note: String(formData.note ?? '').trim() || 'N/A',
+        vehicle_number: vehicle,
         // other fields will be filled below (item_N_name / item_N_quantity)
       };
 
       // Add items in sequential item_1_name, item_1_quantity ... order
       validItems.forEach((it, idx) => {
         const i = idx + 1;
-        details[`item_${i}_name`] = it.name;
-        details[`item_${i}_quantity`] = it.quantity;
-        details[`item_${i}_weight`] = it.weight;
+        details[`item_${i}_name`] = it.name || 'N/A';
+        details[`item_${i}_quantity`] = it.quantity || 'N/A';
+        details[`item_${i}_weight`] = it.weight || 'N/A';
         const total = (parseFloat(it.quantity) || 0) * (parseFloat(it.weight) || 0);
         details[`item_${i}_total`] = total.toFixed(2);
         // optionally include type as item_N_type
-        if (it.type) details[`item_${i}_type`] = it.type;
+        if (it.type) details[`item_${i}_type`] = it.type || 'N/A';
       });
 
       // Submit via submitStageData (AuthContext will wrap into collection doc with timestamp/user)
       await submitStageData('dispatch', details);
 
       setSuccess('Dispatch record submitted successfully!');
-      setTimeout(() => setSuccess(null), 5000);
       setFormData(initialFormData);
       setItems([{ id: Date.now(), name: '', type: '', quantity: '', weight: '' }]);
       setDriverNameManuallyEdited(false);
-      onSubmissionSuccess();
+      
+      // Auto-clear success message after 5 seconds (no redirect)
+      setTimeout(() => {
+        setSuccess(null);
+      }, 5000);
     } catch (err: any) {
       setError(err?.message || 'Unexpected error');
     } finally {
@@ -268,7 +261,6 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
               name="vehicle_number"
               value={formData.vehicle_number || ''}
               onChange={(e) => setField('vehicle_number', e.target.value)}
-              required
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-red-500"
             >
               <option value="">{vehiclesLoading ? 'Loading IN vehicles...' : 'Select Vehicle'}</option>
@@ -303,6 +295,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
           value={String(formData[name] ?? '')}
           onChange={(n, v) => setField(n, v)}
           inputProps={getInputProps(name)}
+          isRequired={false}
         />
       );
     }
@@ -316,6 +309,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
           value={String(formData[name] ?? '')}
           onChange={(n, v) => setField(n, v)}
           inputProps={getInputProps(name)}
+          isRequired={false}
         />
       );
     }
@@ -327,6 +321,7 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
         value={String(formData[field.name] ?? '')}
         onChange={(n, v) => setField(n, v)}
         inputProps={getInputProps(field.name)}
+        isRequired={false}
       />
     );
   };
@@ -335,9 +330,28 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
     <div className="p-6 bg-white rounded-xl shadow-lg w-full max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Dispatch Record</h2>
 
+      {/* Success Modal */}
       {success && (
-        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
-          {success}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
+            <div className="mb-4 flex justify-center">
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-slate-800 mb-2">Success!</h3>
+            <p className="text-slate-600 mb-4">{success}</p>
+            <button
+              onClick={() => {
+                setSuccess(null);
+              }}
+              className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
 
@@ -366,19 +380,19 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Item Name</label>
-                    <input type="text" value={it.name} onChange={(e) => handleItemChange(it.id, 'name', e.target.value)} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., Toor Dal" required />
+                    <input type="text" value={it.name} onChange={(e) => handleItemChange(it.id, 'name', e.target.value)} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., Toor Dal" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Type</label>
-                    <input type="text" value={it.type} onChange={(e) => handleItemChange(it.id, 'type', e.target.value)} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., Raw" required />
+                    <input type="text" value={it.type} onChange={(e) => handleItemChange(it.id, 'type', e.target.value)} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., Raw" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Quantity</label>
-                    <input type="number" value={it.quantity} onChange={(e) => handleItemChange(it.id, 'quantity', sanitizeInteger(e.target.value))} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., 12" min="0" step="1" required />
+                    <input type="number" value={it.quantity} onChange={(e) => handleItemChange(it.id, 'quantity', sanitizeInteger(e.target.value))} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., 12" min="0" step="1" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Weight (ql)</label>
-                    <input type="number" value={it.weight} onChange={(e) => handleItemChange(it.id, 'weight', sanitizeInteger(e.target.value))} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., 50" min="0" step="1" required />
+                    <input type="number" value={it.weight} onChange={(e) => handleItemChange(it.id, 'weight', sanitizeInteger(e.target.value))} className="w-full px-3 py-2 border rounded-md" placeholder="e.g., 50" min="0" step="1" />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Total (ql)</label>

@@ -349,21 +349,11 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ stage, onClose }
             </div>
 
             <div className="p-6 overflow-y-auto" style={{maxHeight: 'calc(100vh - 100px)'}}>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {analyticsContent.kpis.map(kpi => <KpiCard key={kpi.title} {...kpi} />)}
-                </div>
-
-                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[250px]">
-                    {analyticsContent.charts}
-                </div>
-                
-                <div className="mt-6">
-                    {ActivityTable && currentUser ? (
-                        <ActivityTable currentUser={currentUser} />
-                    ) : (
-                        <ActivityLogTable logs={stageLogs} stageId={stage.id} />
-                    )}
-                </div>
+                {ActivityTable && currentUser ? (
+                    <ActivityTable currentUser={currentUser} />
+                ) : (
+                    <ActivityLogTable logs={stageLogs} stageId={stage.id} />
+                )}
             </div>
         </Modal>
     );

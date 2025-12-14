@@ -50,7 +50,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ currentUser, onClose
                         </div>
                         <div>
                             <label htmlFor="email" className={labelClasses}>Email</label>
-                            <input type="email" name="email" id="email" value={userData.email || ''} onChange={handleChange} className={inputClasses} />
+                            <div className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700">
+                                {userData.email || ''}
+                            </div>
                         </div>
                         <div>
                             <label htmlFor="phone" className={labelClasses}>Phone</label>

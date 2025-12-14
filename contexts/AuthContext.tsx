@@ -4,7 +4,18 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWith
 import { collection, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { auth, db, firebaseConfig } from '../firebase/firebase';
 import { PROCESS_STAGES } from '../constants'; // Import process stages
-import type { User, LogEntry } from '../types';
+import type { User } from '../types';
+
+// Ensure LogEntry includes stageId
+interface LogEntry {
+    id: string;
+    stageId: string;
+    timestamp: Date;
+    userId: string;
+    userName: string;
+    action: string;
+    details: Record<string, any>;
+}
 
 // The shape of the authentication context
 interface AuthContextType {
@@ -13,13 +24,14 @@ interface AuthContextType {
     logs: LogEntry[]; // Replaces gateRecords with a unified logs array
     passwordRequests: Array<{ userId: string; email: string; userName: string; userRole: string; requestedAt: Date }>;
     loading: boolean;
-    login: (email: string, pass: string, pin: string) => Promise<void>;
+    login: (email: string, pin: string) => Promise<void>;
     logout: () => void;
     addUser: (details: Omit<User, 'id' | 'pin' | 'password' | 'status'>) => Promise<{ pin: string; password: string }>;
     requestPasswordReset: (email: string) => Promise<void>;
     approvePasswordReset: (requestEmail: string) => Promise<void>;
     updateUserDetails: (updatedUser: User) => Promise<void>;
     deactivateUser: (userId: string) => Promise<void>;
+    deleteUser: (userId: string) => Promise<void>;
     submitStageData: (stageId: string, data: Record<string, any>) => Promise<void>;
     ensureHardcodedAdmin: () => Promise<void>;
     updateUserProfile: (updatedUser: User) => Promise<void>;
@@ -87,10 +99,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     const data = doc.data();
                     const timestamp = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
                     return {
-                        ...data,
                         id: doc.id,
                         stageId: stageId,
                         timestamp: timestamp,
+                        userId: data.userId || '',
+                        userName: data.userName || '',
+                        action: data.action || '',
+                        details: data.details || {},
                     } as LogEntry;
                 });
 
@@ -114,32 +129,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
     }, [currentUser, userDocLoaded]);
 
-    const login = async (identifier: string, pass: string, pin: string) => {
+    const login = async (identifier: string, pin: string) => {
     let userEmail = identifier;
 
-    // Check if the identifier is a username (i.e., not an email)
+    // If identifier is not an email, resolve it to an email first
     if (!identifier.includes('@')) {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("name", "==", identifier));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            throw new Error("Invalid credentials or PIN.");
-        }
-
-        const userData = querySnapshot.docs[0].data() as User;
-        if (!userData.email) {
-            throw new Error("User email not found for the given identifier.");
-        }
-        userEmail = userData.email;
+        // We can't query Firestore here due to permission restrictions
+        // Assume the identifier is an email or we need to authenticate differently
+        throw new Error("Please enter a valid email address.");
     }
 
-    const userCredential = await signInWithEmailAndPassword(auth, userEmail, pass);
+    userEmail = identifier;
+
+    // First, authenticate with Firebase Auth using the default password
+    const userCredential = await signInWithEmailAndPassword(auth, userEmail, 'password');
+    
+    // Now that we're authenticated, verify the PIN in Firestore
     const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
 
-    if (!userDoc.exists() || userDoc.data().pin !== pin) {
+    if (!userDoc.exists()) {
         await signOut(auth);
-        throw new Error("Invalid credentials or PIN.");
+        throw new Error("User not found.");
+    }
+
+    if (userDoc.data().pin !== pin) {
+        await signOut(auth);
+        throw new Error("Invalid PIN.");
     }
 };
 
@@ -183,6 +198,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const deactivateUser = async (userId: string) => {
         await updateDoc(doc(db, "users", userId), { status: 'INACTIVE' });
+    };
+
+    const deleteUser = async (userId: string) => {
+        try {
+            // Delete from Firestore - this prevents login since user document is required for auth
+            await deleteDoc(doc(db, "users", userId));
+            console.log('User deleted from Firestore:', userId);
+            
+            // Cloud Function deletion from Firebase Auth requires Blaze plan
+            // The Firestore deletion is sufficient to prevent login
+        } catch (error) {
+            console.error('Error deleting user from Firestore:', error);
+            throw error;
+        }
     };
 
     const submitStageData = async (stageId: string, data: Record<string, any>) => {
@@ -244,7 +273,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const value = { 
         currentUser, users, logs, passwordRequests, loading, 
         login, logout, addUser, requestPasswordReset, approvePasswordReset,
-        updateUserDetails, deactivateUser, submitStageData,
+        updateUserDetails, deactivateUser, deleteUser, submitStageData,
         ensureHardcodedAdmin, updateUserProfile, verifyPin
     };
 

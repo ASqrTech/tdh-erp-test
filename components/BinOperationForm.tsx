@@ -76,8 +76,24 @@ export const BinOperationForm: React.FC = () => {
 
             {/* Success Flash Message */}
             {successMessage && (
-                <div className="max-w-2xl mx-auto mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md animate-fade-in">
-                    <p className="text-center font-medium">{successMessage}</p>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
+                        <div className="mb-4 flex justify-center">
+                            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
+                                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-semibold text-slate-800 mb-2">Success!</h3>
+                        <p className="text-slate-600 mb-4">{successMessage}</p>
+                        <button
+                            onClick={() => setSuccessMessage('')}
+                            className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+                        >
+                            Close
+                        </button>
+                    </div>
                 </div>
             )}
 

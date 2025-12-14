@@ -63,7 +63,9 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ user
                             </div>
                              <div>
                                 <label htmlFor="email" className={labelClasses}>Email Address</label>
-                                <input type="email" id="email" name="email" value={userData.email || ''} onChange={handleChange} className={inputClasses} disabled={isReadOnly} required />
+                                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700">
+                                    {userData.email || ''}
+                                </div>
                             </div>
                             <div>
                                 <label htmlFor="phone" className={labelClasses}>Phone Number</label>

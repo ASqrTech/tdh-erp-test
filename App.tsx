@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginScreen from './components/LoginScreen';
 import { ManagerView } from './components/ManagerView';
 import { UserDashboardView } from './components/UserDashboardView';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { Header } from './components/Header';
 import { GateEntryForm } from './components/GateEntryForm';
 import { DispatchForm } from './components/DispatchForm';
@@ -47,8 +48,11 @@ const AppContent: React.FC = () => {
     }
 
     const renderMainContent = () => {
+        // Prevent non-managers from accessing manage view
+        const isManager = auth.currentUser?.role === 'ADMIN' || auth.currentUser?.role === 'MANAGER';
+        
         if (currentView === 'process') {
-            if (auth.currentUser?.role === 'MANAGER' || auth.currentUser?.role === 'ASSISTANT_MANAGER') {
+            if (auth.currentUser?.role === 'MANAGER' || auth.currentUser?.role === 'ASSISTANT_MANAGER' || auth.currentUser?.role === 'ADMIN') {
                 return <ManagerProcessView stages={PROCESS_STAGES} onStageClick={handleStageClick} />;
             }
             switch (auth.currentUser?.role) {
@@ -67,12 +71,18 @@ const AppContent: React.FC = () => {
             }
         }
 
+        // Manage view - only for managers and admins
         if (currentView === 'manage') {
-            return <ManagerView />;
+            if (isManager) {
+                return <ManagerView />;
+            }
+            // Redirect non-managers to dashboard
+            return <UserDashboardView />;
         }
 
-        if (auth.currentUser.role === 'MANAGER' || auth.currentUser.role === 'ADMIN') {
-            return <ManagerView />;
+        // Dashboard view
+        if (isManager) {
+            return <AnalyticsDashboard />;
         }
         return <UserDashboardView />;
     };
@@ -90,7 +100,7 @@ const AppContent: React.FC = () => {
                 {renderMainContent()}
             </main>
             <footer className="text-center py-4 text-sm text-slate-500 border-t border-slate-200 bg-gray-50">
-                <p>Prepared by A Square Technologies</p>
+                <p>Powered by A Square Technologies</p>
             </footer>
             {isProfileModalOpen && auth.currentUser && (
                 <ProfileModal 

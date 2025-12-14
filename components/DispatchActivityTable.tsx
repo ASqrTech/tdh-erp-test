@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { LogEntry } from '../types';
 import { DispatchDetailsModal } from './DispatchDetailsModal';
 import { db } from '../firebase/firebase';
-import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp, doc, updateDoc } from 'firebase/firestore';
 
 type TimeFilter = '24h' | 'week' | 'month' | 'custom';
 
@@ -16,6 +16,10 @@ export const DispatchActivityTable: React.FC = () => {
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedRecord, setSelectedRecord] = useState<LogEntry | null>(null);
     const [weighingRecords, setWeighingRecords] = useState<LogEntry[]>([]);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const canManageRecords = currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN';
 
     // Fetch dispatch records from dispatch_records collection
     useEffect(() => {
@@ -39,15 +43,19 @@ export const DispatchActivityTable: React.FC = () => {
                     userName: data.userName,
                     action: data.action || 'dispatch_RECORDED',
                     details: data.details || data,
+                    active: data.active !== false, // Default to true if not set
+                    deleted: data.deleted === true, // Track deleted state
                 } as LogEntry;
             });
-            setDispatchRecords(records);
+            // For managers: filter out deleted records. For admins: show all records
+            const isAdmin = currentUser?.role === 'ADMIN';
+            setDispatchRecords(isAdmin ? records : records.filter(r => !r.deleted));
         }, (error) => {
             console.error('Error fetching dispatch records:', error);
         });
 
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, canManageRecords]);
 
     // Fetch weighing records to get out_weight data
     useEffect(() => {
@@ -98,6 +106,9 @@ export const DispatchActivityTable: React.FC = () => {
 
     const filteredRecords = useMemo(() => {
         return (dispatchRecords || []).filter(record => {
+            // Managers should never see deleted records
+            if (currentUser?.role === 'MANAGER' && record.deleted) return false;
+            
             if (!record.timestamp) return false;
 
             const recordDate = new Date(record.timestamp);
@@ -144,13 +155,49 @@ export const DispatchActivityTable: React.FC = () => {
                 (details.ticket_number?.toString().toLowerCase().includes(lowercasedSearch))
             );
         });
-    }, [dispatchRecords, searchTerm, timeFilter, customStartDate, customEndDate]);
+    }, [dispatchRecords, searchTerm, timeFilter, customStartDate, customEndDate, currentUser?.role]);
 
     const formatTimestamp = (isoString: string) => {
         try {
             return new Date(isoString).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
         } catch {
             return isoString;
+        }
+    };
+
+    const toggleSelection = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredRecords.length && filteredRecords.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredRecords.map(r => r.id)));
+        }
+    };
+
+    const deleteRecords = async () => {
+        if (selectedIds.size === 0) return;
+        
+        setIsUpdating(true);
+        try {
+            const updatePromises = Array.from(selectedIds).map(id => 
+                updateDoc(doc(db, 'dispatch_records', id), { deleted: true })
+            );
+            await Promise.all(updatePromises);
+            setSelectedIds(new Set());
+        } catch (error) {
+            console.error('Error deleting records:', error);
+            alert('Failed to delete records. Please try again.');
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -208,9 +255,33 @@ export const DispatchActivityTable: React.FC = () => {
             )}
 
             <div className="overflow-x-auto">
+                {canManageRecords && filteredRecords.length > 0 && (
+                    <div className="mb-4 flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-700">
+                            {selectedIds.size} selected
+                        </span>
+                        <button
+                            onClick={deleteRecords}
+                            disabled={selectedIds.size === 0 || isUpdating}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                            {isUpdating ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </div>
+                )}
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                         <tr>
+                            {canManageRecords && (
+                                <th className="p-3 w-12">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.size === filteredRecords.length && filteredRecords.length > 0}
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                                    />
+                                </th>
+                            )}
                             <th className="p-3">Vehicle No.</th>
                             <th className="p-3">Client Name</th>
                             <th className="p-3">Destination</th>
@@ -224,14 +295,28 @@ export const DispatchActivityTable: React.FC = () => {
                             const details = (record.details || {}) as Record<string, any>;
                             const grossWeight = parseFloat(details.gross_weight) || 0;
                             const tareWeight = parseFloat(details.tare_weight) || 0;
-                            const netWeight = (grossWeight > 0 && tareWeight > 0) ? ((grossWeight - tareWeight).toFixed(2)) : '-';
+                            const netWeight = (grossWeight > 0 && tareWeight > 0) ? ((tareWeight - grossWeight).toFixed(2)) : '-';
                             const vehicleNumber = details.vehicle_number;
                             // Normalize to uppercase for Map lookup
                             const weighbridgeWeight = vehicleWeightMap.get(String(vehicleNumber || '').toUpperCase()) || 0;
+                            const isInactive = record.active === false;
 
                             return (
-                                <tr key={record.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 font-medium text-slate-800">{vehicleNumber?.toUpperCase()}</td>
+                                <tr key={record.id} className={`border-b hover:bg-slate-50 ${isInactive ? 'bg-gray-100 opacity-60' : ''}`}>
+                                    {canManageRecords && (
+                                        <td className="p-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(record.id)}
+                                                onChange={() => toggleSelection(record.id)}
+                                                className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                                            />
+                                        </td>
+                                    )}
+                                    <td className="p-3 font-medium text-slate-800">
+                                        {vehicleNumber?.toUpperCase()}
+                                        {record.deleted && <span className="ml-2 text-xs text-red-600 font-semibold">(deleted)</span>}
+                                    </td>
                                     <td className="p-3 text-slate-600">{details.client_name}</td>
                                     <td className="p-3 text-slate-600">{details.destination}</td>
                                     <td className="p-3 font-bold text-slate-800">{weighbridgeWeight > 0 ? weighbridgeWeight.toLocaleString() : '-'}</td>
@@ -248,7 +333,7 @@ export const DispatchActivityTable: React.FC = () => {
                             );
                         }) : (
                             <tr>
-                                <td colSpan={6} className="text-center p-8 text-slate-500">No entries found for the selected criteria.</td>
+                                <td colSpan={canManageRecords ? 7 : 6} className="text-center p-8 text-slate-500">No entries found for the selected criteria.</td>
                             </tr>
                         )}
                     </tbody>

@@ -33,4 +33,5 @@ export interface LogEntry {
     userName: string;
     action: string;
     details: string | Record<string, any>;
+    active?: boolean; // Flag for soft delete/inactive state
 }
