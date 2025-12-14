@@ -55,11 +55,14 @@ export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ user
                             </div>
                             <div>
                                 <label htmlFor="role" className={labelClasses}>Role</label>
-                                <select id="role" name="role" value={userData.role} onChange={handleChange} className={inputClasses} disabled={isReadOnly}>
+                                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700">
+                                    {userData.role.replace(/_/g, ' ').toLowerCase() || ''}
+                                </div>
+                                {/* <select id="role" name="role" value={userData.role} onChange={handleChange} className={inputClasses} disabled={isReadOnly}>
                                     {availableRoles.map(role => (
                                         <option key={role} value={role}>{role.replace(/_/g, ' ').toLowerCase()}</option>
                                     ))}
-                                </select>
+                                </select> */}
                             </div>
                              <div>
                                 <label htmlFor="email" className={labelClasses}>Email Address</label>

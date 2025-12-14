@@ -295,7 +295,7 @@ export const DispatchActivityTable: React.FC = () => {
                             const details = (record.details || {}) as Record<string, any>;
                             const grossWeight = parseFloat(details.gross_weight) || 0;
                             const tareWeight = parseFloat(details.tare_weight) || 0;
-                            const netWeight = (grossWeight > 0 && tareWeight > 0) ? ((tareWeight - grossWeight).toFixed(2)) : '-';
+                            const netWeight = (grossWeight > 0 && tareWeight > 0) ? ((grossWeight - tareWeight).toFixed(2)) : '-';
                             const vehicleNumber = details.vehicle_number;
                             // Normalize to uppercase for Map lookup
                             const weighbridgeWeight = vehicleWeightMap.get(String(vehicleNumber || '').toUpperCase()) || 0;

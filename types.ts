@@ -13,11 +13,15 @@ export interface User {
     name: string;
     pin: string;
     role: Role;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    OtherDetails?: string;
     email: string;
     phone?: string;
     address?: string;
     status: 'ACTIVE' | 'INACTIVE';
     isTemporaryPassword?: boolean;
+    em
 }
 
 export interface ProcessStage {
@@ -28,10 +32,11 @@ export interface ProcessStage {
 
 export interface LogEntry {
     id: string;
-    timestamp: string;
+    timestamp: any;
     userId: string;
     userName: string;
     action: string;
     details: string | Record<string, any>;
+    deleted?: boolean;
     active?: boolean; // Flag for soft delete/inactive state
 }

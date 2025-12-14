@@ -291,26 +291,27 @@ export const DispatchForm: React.FC<DispatchFormProps> = ({ onSubmissionSuccess 
       return (
         <FormFieldComponent
           key={name}
+          field={{ ...field, name: name, label: 'Out Weight' }}
+          value={String(formData[name] ?? '')}
+          onChange={(n, v) => setField(n, v)}
+          inputProps={getInputProps(name)}
+          isRequired={false}
+          />
+      );
+    }
+    
+    if (field.name === 'tare_weight' || field.name === 'out_weight') {
+      const name = field.name === 'out_weight' ? 'tare_weight' : field.name;
+      return (
+        <FormFieldComponent
+          key={name}
           field={{ ...field, name: name, label: 'In Weight' }}
           value={String(formData[name] ?? '')}
           onChange={(n, v) => setField(n, v)}
           inputProps={getInputProps(name)}
           isRequired={false}
         />
-      );
-    }
-
-    if (field.name === 'tare_weight' || field.name === 'out_weight') {
-      const name = field.name === 'out_weight' ? 'tare_weight' : field.name;
-      return (
-        <FormFieldComponent
-          key={name}
-          field={{ ...field, name: name, label: 'Out Weight' }}
-          value={String(formData[name] ?? '')}
-          onChange={(n, v) => setField(n, v)}
-          inputProps={getInputProps(name)}
-          isRequired={false}
-        />
+        
       );
     }
 

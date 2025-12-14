@@ -102,11 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         id: doc.id,
                         stageId: stageId,
                         timestamp: timestamp,
-                        userId: data.userId || '',
-                        userName: data.userName || '',
-                        action: data.action || '',
-                        details: data.details || {},
-                    } as LogEntry;
+                    } as any as LogEntry;
                 });
 
                 setLogs(prevLogs => {
